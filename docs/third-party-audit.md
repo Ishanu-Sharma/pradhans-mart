@@ -2,7 +2,7 @@
 
 Audited 15 November 2026, updated the same day for photos and the typeface.
 
-## Result: no third-party code or assets
+## Result: no third-party code; licensed third-party photos and font, self-hosted
 
 | Area | Finding |
 |---|---|
