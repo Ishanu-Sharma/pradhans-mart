@@ -1,0 +1,49 @@
+<div class="wrap">
+  <div class="page-head">
+    <h1>Shop</h1>
+    <p>Prices include GST. Stock updates live. <span class="live-dot" id="live-state" data-state="off">Connecting</span></p>
+  </div>
+  <div id="store-status"></div>
+</div>
+
+<div class="wrap shop-layout">
+  <div class="shop-tools">
+    <div class="field search">
+      <label for="search" class="visually-hidden">Search products</label>
+      <svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#search"></use></svg>
+      <input class="input" id="search" type="search" placeholder="Search by product or brand" autocomplete="off">
+    </div>
+    <div class="category-bar" id="categories" role="group" aria-label="Filter by category"></div>
+  </div>
+  <p class="visually-hidden" id="results-status" role="status" aria-live="polite"></p>
+  <ul class="product-grid" id="products" aria-label="Products"></ul>
+  <p class="empty-state" id="empty" hidden>No products match your search.</p>
+</div>
+
+<dialog class="drawer" id="cart" aria-labelledby="cart-title">
+  <div class="drawer-head">
+    <h2 id="cart-title">Your cart</h2>
+    <button type="button" class="btn btn-secondary btn-icon" data-close aria-label="Close cart">
+      <svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#close"></use></svg>
+    </button>
+  </div>
+  <div class="drawer-body">
+    <ul class="cart-lines" id="cart-lines"></ul>
+    <p class="empty-state" id="cart-empty">Your cart is empty.</p>
+  </div>
+  <div class="drawer-foot">
+    <dl class="summary" id="cart-summary"></dl>
+    <p class="small muted" id="free-note"></p>
+    <a class="btn btn-primary btn-block" id="to-checkout" href="/checkout">Go to checkout</a>
+  </div>
+</dialog>
+
+<dialog class="modal" id="product-dialog" aria-labelledby="pd-title">
+  <div class="drawer-head">
+    <h2 id="pd-title">Product details</h2>
+    <button type="button" class="btn btn-secondary btn-icon" data-close aria-label="Close product details">
+      <svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#close"></use></svg>
+    </button>
+  </div>
+  <div class="modal-body" id="pd-body"></div>
+</dialog>

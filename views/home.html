@@ -1,0 +1,143 @@
+<section class="hero" aria-labelledby="hero-title">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="offer-label">Free delivery on orders of &#8377;{{freeDeliveryFrom}} or more</p>
+      <h1 id="hero-title">Groceries from Indian brands, delivered across Guwahati</h1>
+      <p class="hero-lead">Order milk, atta, dal, tea, snacks and household goods from brands founded and owned in India. Pay in cash or by UPI when the order reaches your door.</p>
+      <ul class="hero-facts">
+        <li><svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#pin"></use></svg>Pincodes {{pincodeFirst}} to {{pincodeLast}}, Guwahati</li>
+        <li><svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#receipt"></use></svg>Orders taken {{hoursText}}</li>
+      </ul>
+    </div>
+
+    <div class="form-panel-grid">
+      <div class="form-panel" id="area-check">
+        <h2 id="area-title">See if we deliver to your address</h2>
+        <form class="area-form" id="area-form" novalidate aria-labelledby="area-title">
+          <div class="field">
+            <label for="pincode">Pincode</label>
+            <span class="hint" id="pincode-hint">6 digits, for example 781006</span>
+            <div class="input-row">
+              <input class="input" id="pincode" name="pincode" inputmode="numeric" autocomplete="postal-code" maxlength="6" aria-describedby="pincode-hint" required>
+              <button class="btn btn-primary" type="submit">Check my area</button>
+            </div>
+            <p class="error" id="pincode-error" hidden></p>
+          </div>
+        </form>
+        <p class="or-row">or</p>
+        <button type="button" class="btn btn-secondary btn-block" id="use-location">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#pin"></use></svg>
+          Use my current location
+        </button>
+        <p class="hint small" id="location-note">Your location is checked on this device only. It is not sent to us.</p>
+        <div class="area-result" id="area-result" role="status" aria-live="polite"></div>
+      </div>
+
+      <ul class="chips" aria-label="What every order includes">
+        <li class="chip"><svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#wallet"></use></svg>Pay on delivery, by cash or UPI</li>
+        <li class="chip"><svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#receipt"></use></svg>Delivery fee &#8377;{{deliveryFee}}, free from &#8377;{{freeDeliveryFrom}}. No other charges.</li>
+        <li class="chip"><svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#check"></use></svg>Indian brands only</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="brand-strip" aria-labelledby="brands-title">
+  <div class="wrap">
+    <h2 id="brands-title">Brands on our shelves</h2>
+    <ul class="brand-list">{{{brandList}}}</ul>
+  </div>
+</section>
+
+<section class="section section-surface" aria-labelledby="benefits-title">
+  <div class="wrap">
+    <div class="section-head">
+      <h2 id="benefits-title">What you get with every order</h2>
+    </div>
+    <ul class="benefits">
+      <li class="benefit">
+        <div class="icon-box"><svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#receipt"></use></svg></div>
+        <h3>The full total before you order</h3>
+        <p>Your cart shows item prices, the delivery fee and the final amount. Nothing is added at checkout.</p>
+      </li>
+      <li class="benefit">
+        <div class="icon-box"><svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#wallet"></use></svg></div>
+        <h3>Pay when it arrives</h3>
+        <p>Hand cash to the rider or pay by UPI at your door. We never ask for card or bank details on this site.</p>
+      </li>
+      <li class="benefit">
+        <div class="icon-box"><svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#route"></use></svg></div>
+        <h3>Live order tracking</h3>
+        <p>See when we accept, pack and send your order, and how far away the rider is once they set off.</p>
+      </li>
+      <li class="benefit">
+        <div class="icon-box"><svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#undo"></use></svg></div>
+        <h3>Cancel until we pack</h3>
+        <p>Changed your mind? Cancel from the tracking page before packing starts. You pay nothing.</p>
+      </li>
+    </ul>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#area-check" data-cta>Check my area</a>
+      <a class="btn btn-secondary" href="/shop">Browse the shop</a>
+    </div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="faq-title">
+  <div class="wrap">
+    <div class="section-head">
+      <h2 id="faq-title">Questions about ordering</h2>
+    </div>
+    <div class="faq">
+      <details>
+        <summary>Which parts of Guwahati do you deliver to?</summary>
+        <div class="answer">
+          <p>We deliver to addresses with these pincodes:</p>
+          <ul class="pincode-grid">{{{pincodeList}}}</ul>
+        </div>
+      </details>
+      <details>
+        <summary>How long does delivery take?</summary>
+        <div class="answer"><p>It depends on how far you are from the store and how many orders are waiting. We do not promise a fixed number of minutes. Instead, the tracking page shows each step as it happens and, once the rider leaves, how far away they are.</p></div>
+      </details>
+      <details>
+        <summary>What does delivery cost?</summary>
+        <div class="answer"><p>Delivery costs &#8377;{{deliveryFee}}. It is free when the items in your cart add up to &#8377;{{freeDeliveryFrom}} or more. There are no packing, handling, platform or late-night charges. Item prices are the prices printed in the shop and include GST.</p></div>
+      </details>
+      <details>
+        <summary>When can I order?</summary>
+        <div class="answer"><p>We take orders {{hoursText}}.{{{hoursNote}}}</p></div>
+      </details>
+      <details>
+        <summary>How do I pay?</summary>
+        <div class="answer"><p>You pay the rider when your order arrives, either in cash or by UPI. Nothing is charged when you place the order.</p></div>
+      </details>
+      <details>
+        <summary>Can I cancel or return something?</summary>
+        <div class="answer"><p>You can cancel from the tracking page until we start packing. At the door you can refuse any item that is damaged, expired or not what you ordered, and you pay only for what you keep. The <a href="/refunds">cancellation and refund policy</a> has the details.</p></div>
+      </details>
+      <details>
+        <summary>How do you decide which brands to sell?</summary>
+        <div class="answer"><p>We sell only brands that were founded in India and are owned by an Indian company or cooperative. If you think a product does not meet this rule, write to us through the <a href="/contact">contact page</a> and we will check it.</p></div>
+      </details>
+      <details>
+        <summary>What do you do with my details?</summary>
+        <div class="answer"><p>We ask only for what we need to deliver: your name, mobile number and address. You can download or delete your data at any time from the <a href="/data-request">your data page</a>. The <a href="/privacy">privacy policy</a> explains the rest.</p></div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="section final-cta" aria-labelledby="final-title">
+  <div class="wrap">
+    <h2 id="final-title">Check your pincode and start your first order</h2>
+    <p>Enter your pincode or use your location, and we will tell you straight away whether we deliver there.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#area-check" data-cta>Check my area</a>
+    </div>
+  </div>
+</section>
+
+<div class="sticky-cta" id="sticky-cta">
+  <a class="btn btn-primary btn-block" href="#area-check" data-cta>Check my area</a>
+</div>

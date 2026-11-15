@@ -1,0 +1,26 @@
+{
+  "_note": "Fill every field marked required before launch. The production server refuses to start while a required field is empty. These values appear in the footer, on the Contact page and in every policy, as the Consumer Protection (E-Commerce) Rules, 2020 require.",
+  "brandName": "Pradhan’s Mart",
+  "shortName": "P Mart",
+  "legalName": "",
+  "entityType": "",
+  "registeredAddress": "",
+  "storeAddress": "",
+  "gstin": "",
+  "fssaiLicence": "",
+  "cin": "",
+  "supportEmail": "",
+  "supportPhone": "",
+  "supportHours": "",
+  "privacyEmail": "",
+  "grievanceOfficer": {
+    "name": "",
+    "designation": "",
+    "email": "",
+    "phone": ""
+  },
+  "hostingProvider": "",
+  "dataStorageLocation": "",
+  "policyEffectiveDate": "",
+  "_optional": ["cin"]
+}

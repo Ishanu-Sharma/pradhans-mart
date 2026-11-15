@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /admin
+Disallow: /rider
+Disallow: /api/
+Disallow: /checkout
+Disallow: /order
+Disallow: /unsubscribe

@@ -1,0 +1,39 @@
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <section aria-labelledby="footer-biz">
+        <h2 id="footer-biz">Business details</h2>
+        {{{demoFooterNote}}}
+        <dl class="biz-details"{{{bizHidden}}}>
+          <div><dt>Legal name</dt><dd>{{biz.legalName}}</dd></div>
+          <div><dt>Registered address</dt><dd>{{biz.registeredAddress}}</dd></div>
+          <div><dt>GSTIN</dt><dd>{{biz.gstin}}</dd></div>
+          <div><dt>FSSAI licence</dt><dd>{{biz.fssaiLicence}}</dd></div>
+          {{{cinRow}}}
+          <div><dt>Support</dt><dd>{{biz.supportEmail}}, {{biz.supportPhone}}</dd></div>
+          <div><dt>Grievance officer</dt><dd>{{biz.grievanceOfficer.name}}, {{biz.grievanceOfficer.email}}</dd></div>
+        </dl>
+      </section>
+      <nav aria-labelledby="footer-policies">
+        <h2 id="footer-policies">Policies</h2>
+        <ul>
+          <li><a href="/privacy">Privacy policy</a></li>
+          <li><a href="/terms">Terms of service</a></li>
+          <li><a href="/refunds">Cancellation and refunds</a></li>
+          <li><a href="/cookies">Cookie policy</a></li>
+          <li><button type="button" class="link-button" data-cookie-settings>Cookie settings</button></li>
+        </ul>
+      </nav>
+      <nav aria-labelledby="footer-help">
+        <h2 id="footer-help">Help</h2>
+        <ul>
+          <li><a href="/contact">Contact and grievances</a></li>
+          <li><a href="/order">Track an order</a></li>
+          <li><a href="/data-request">Download or delete your data</a></li>
+          <li><a href="/shop">Shop</a></li>
+        </ul>
+      </nav>
+    </div>
+    <p class="footer-bottom">&copy; {{year}} {{copyrightName}}. {{footerLine}}</p>
+  </div>
+</footer>

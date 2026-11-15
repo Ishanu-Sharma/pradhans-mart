@@ -1,0 +1,118 @@
+<div class="wrap">
+  <div class="page-head">
+    <h1>Checkout</h1>
+    <p>Three short steps. Nothing is charged until your order arrives.</p>
+  </div>
+</div>
+
+<div class="wrap checkout-grid">
+  <div>
+    <ol class="steps" id="steps" aria-label="Checkout progress">
+      <li data-step="1" aria-current="step"><span>Address</span></li>
+      <li data-step="2"><span>Review and pay</span></li>
+      <li data-step="3"><span>Confirmation</span></li>
+    </ol>
+    <div id="checkout-alert" role="alert"></div>
+
+    <form id="step-1" class="panel" novalidate aria-labelledby="s1-title">
+      <h2 id="s1-title" tabindex="-1">Where should we deliver?</h2>
+      <p class="muted small">We use these details only to deliver this order. See the <a href="/privacy">privacy policy</a>.</p>
+      <div class="form-row two">
+        <div class="field">
+          <label for="name">Full name</label>
+          <input class="input" id="name" name="name" autocomplete="name" required>
+          <p class="error" id="name-error" hidden></p>
+        </div>
+        <div class="field">
+          <label for="phone">Mobile number</label>
+          <span class="hint" id="phone-hint">The rider calls this number if they cannot find you.</span>
+          <input class="input" id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel-national" aria-describedby="phone-hint" required>
+          <p class="error" id="phone-error" hidden></p>
+        </div>
+      </div>
+      <div class="field">
+        <label for="house">House, flat or building</label>
+        <input class="input" id="house" name="house" autocomplete="address-line1" required>
+        <p class="error" id="house-error" hidden></p>
+      </div>
+      <div class="field">
+        <label for="street">Street and locality</label>
+        <input class="input" id="street" name="street" autocomplete="address-line2" required>
+        <p class="error" id="street-error" hidden></p>
+      </div>
+      <div class="form-row two">
+        <div class="field">
+          <label for="landmark">Landmark <span class="optional">(optional)</span></label>
+          <input class="input" id="landmark" name="landmark">
+          <p class="error" id="landmark-error" hidden></p>
+        </div>
+        <div class="field">
+          <label for="pincode">Pincode</label>
+          <input class="input" id="pincode" name="pincode" inputmode="numeric" maxlength="6" autocomplete="postal-code" required>
+          <p class="error" id="pincode-error" hidden></p>
+        </div>
+      </div>
+      <div class="check">
+        <input type="checkbox" id="share-location" name="shareLocation" aria-describedby="share-location-hint">
+        <div>
+          <label for="share-location">Share my current location with the rider <span class="optional">(optional)</span></label>
+          <span class="hint" id="share-location-hint">Helps the rider find you. We delete it {{addressDays}} days after delivery.</span>
+        </div>
+      </div>
+      <p class="error" id="share-location-error" hidden></p>
+      <p class="small" id="location-status" role="status" aria-live="polite"></p>
+      <div class="step-actions">
+        <a class="btn btn-secondary" href="/shop">Back to shop</a>
+        <button class="btn btn-primary" type="submit">Continue to review</button>
+      </div>
+    </form>
+
+    <form id="step-2" class="panel" novalidate aria-labelledby="s2-title" hidden>
+      <h2 id="s2-title" tabindex="-1">Review and pay</h2>
+      <div id="review-address" class="notice notice-info"></div>
+      <fieldset>
+        <legend class="legend" id="payment-legend">How will you pay the rider?</legend>
+        <div id="payment-options"></div>
+        <p class="error" id="payment-error" hidden></p>
+      </fieldset>
+      <div class="check">
+        <input type="checkbox" id="terms" required aria-describedby="terms-error">
+        <label for="terms">I accept the <a href="/terms" target="_blank" rel="noopener">Terms of service</a> and have read the <a href="/privacy" target="_blank" rel="noopener">Privacy policy</a>.</label>
+      </div>
+      <p class="error" id="terms-error" hidden></p>
+      <div class="check">
+        <input type="checkbox" id="age" required aria-describedby="age-error">
+        <label for="age">I am 18 years old or older.</label>
+      </div>
+      <p class="error" id="age-error" hidden></p>
+      <div class="check">
+        <input type="checkbox" id="marketing" aria-describedby="marketing-hint">
+        <div>
+          <label for="marketing">Email me offers <span class="optional">(optional)</span></label>
+          <span class="hint" id="marketing-hint">You can unsubscribe from any email with one click.</span>
+        </div>
+      </div>
+      <div class="field" id="email-field" hidden>
+        <label for="email">Email address</label>
+        <input class="input" id="email" type="email" autocomplete="email">
+        <p class="error" id="email-error" hidden></p>
+      </div>
+      <div class="step-actions">
+        <button class="btn btn-secondary" type="button" id="back-1">Change address</button>
+        <button class="btn btn-primary" type="submit" id="place-order">Place order</button>
+      </div>
+    </form>
+
+    <section id="step-3" class="panel" aria-labelledby="s3-title" hidden>
+      <h2 id="s3-title" tabindex="-1">Order placed</h2>
+      <div id="confirmation"></div>
+    </section>
+  </div>
+
+  <aside class="order-aside panel" aria-labelledby="summary-title">
+    <h2 id="summary-title">Order summary</h2>
+    <ul class="review-lines" id="summary-lines"></ul>
+    <dl class="summary" id="summary-totals"></dl>
+    <p class="small muted">Prices include GST. You pay this amount to the rider in cash or by UPI.</p>
+  </aside>
+</div>

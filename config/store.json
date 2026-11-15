@@ -1,0 +1,30 @@
+{
+  "city": "Guwahati",
+  "serviceArea": {
+    "center": { "lat": 26.1445, "lng": 91.7362 },
+    "radiusKm": 12,
+    "pincodes": [
+      "781001", "781002", "781003", "781004", "781005", "781006", "781007", "781008", "781009", "781010",
+      "781011", "781012", "781013", "781014", "781015", "781016", "781017", "781018", "781019", "781020",
+      "781021", "781022", "781023", "781024", "781025", "781026", "781027", "781028", "781029", "781030",
+      "781031", "781032", "781033", "781034", "781035", "781036", "781037", "781038", "781039", "781040"
+    ]
+  },
+  "hours": { "open": "07:00", "close": "23:00", "timeZone": "Asia/Kolkata" },
+  "fees": { "deliveryFee": 25, "freeDeliveryFrom": 299 },
+  "limits": { "maxQtyPerItem": 10, "maxLines": 30 },
+  "paymentMethods": [
+    { "id": "cod", "label": "Cash on delivery" },
+    { "id": "upi_on_delivery", "label": "UPI on delivery" }
+  ],
+  "refunds": { "reportWithinHours": 48, "refundWithinDays": 7 },
+  "retention": { "addressDaysAfterCompletion": 30, "staffSessionHours": 12 },
+  "launch": {
+    "catalogVerified": false,
+    "feesConfirmed": false,
+    "serviceAreaConfirmed": false,
+    "hoursConfirmed": false,
+    "refundTermsConfirmed": false,
+    "policiesReviewedByLawyer": false
+  }
+}

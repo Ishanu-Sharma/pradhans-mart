@@ -1,0 +1,45 @@
+<div class="wrap">
+  <div class="page-head">
+    <h1>Download or delete your data</h1>
+    <p>Use the order ID and mobile number from any order you placed. They prove the data is yours.</p>
+  </div>
+</div>
+<div class="wrap narrow">
+  <div id="request-alert" role="alert"></div>
+  <form id="request-form" class="panel" novalidate aria-labelledby="request-title">
+    <h2 id="request-title">Your request</h2>
+    <div class="form-row two">
+      <div class="field">
+        <label for="orderId">Order ID</label>
+        <span class="hint" id="orderId-hint">Starts with PM, for example PM7K2QX9RD</span>
+        <input class="input" id="orderId" autocomplete="off" autocapitalize="characters" aria-describedby="orderId-hint" required>
+        <p class="error" id="orderId-error" hidden></p>
+      </div>
+      <div class="field">
+        <label for="phone">Mobile number used for that order</label>
+        <span class="hint" id="phone-hint">10 digits</span>
+        <input class="input" id="phone" type="tel" inputmode="tel" autocomplete="tel-national" aria-describedby="phone-hint" required>
+        <p class="error" id="phone-error" hidden></p>
+      </div>
+    </div>
+    <fieldset>
+      <legend class="legend">What would you like us to do?</legend>
+      <label class="radio-card"><input type="radio" name="type" value="export"> Download a copy of my data (a JSON file)</label>
+      <label class="radio-card"><input type="radio" name="type" value="delete"> Delete my personal data</label>
+      <p class="error" id="type-error" hidden></p>
+    </fieldset>
+    <div id="delete-confirm" hidden>
+      <div class="notice notice-warn">
+        <strong>What deletion removes</strong>
+        <p>Your name, mobile number, addresses and saved locations are removed from every order placed with this number, and any offer emails stop. We keep each order's ID, items, amounts and dates because GST law requires us to keep invoices. Those records will no longer be linked to you. This cannot be undone.</p>
+      </div>
+      <div class="check">
+        <input type="checkbox" id="confirm" aria-describedby="confirm-error">
+        <label for="confirm">I understand and want my personal data deleted.</label>
+      </div>
+      <p class="error" id="confirm-error" hidden></p>
+    </div>
+    <button class="btn btn-primary" type="submit">Send request</button>
+  </form>
+  <p class="muted small section">To correct your details or for any other request about your data, write to {{biz.privacyEmail}}. Our grievance officer replies within the time limits in the <a href="/privacy">privacy policy</a>.</p>
+</div>

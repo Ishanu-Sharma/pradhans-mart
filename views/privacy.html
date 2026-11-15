@@ -1,0 +1,88 @@
+<div class="wrap">
+  <div class="page-head">
+    <h1>Privacy policy</h1>
+    <p>In effect from {{biz.policyEffectiveDate}}.</p>
+  </div>
+</div>
+<article class="wrap prose">
+  <nav class="toc" aria-labelledby="toc-title">
+    <h2 id="toc-title">On this page</h2>
+    <ol>
+      <li><a href="#who">Who we are</a></li>
+      <li><a href="#collect">What we collect, why and for how long</a></li>
+      <li><a href="#not">What we never do</a></li>
+      <li><a href="#share">Who sees your data</a></li>
+      <li><a href="#third">Third-party code on this site</a></li>
+      <li><a href="#security">How we protect it</a></li>
+      <li><a href="#children">Children</a></li>
+      <li><a href="#rights">Your rights and how to use them</a></li>
+      <li><a href="#grievance">Complaints</a></li>
+      <li><a href="#changes">Changes to this policy</a></li>
+    </ol>
+  </nav>
+
+  <h2 id="who">1. Who we are</h2>
+  <p>{{biz.brandName}} ("we", "us") is run by {{biz.legalName}}, {{biz.registeredAddress}}. We decide why and how your personal data is used, which makes us the Data Fiduciary under the Digital Personal Data Protection Act, 2023 ("DPDP Act"). For anything about your data, write to {{biz.privacyEmail}}.</p>
+
+  <h2 id="collect">2. What we collect, why and for how long</h2>
+  <p>We ask only for what we need to deliver your order. Fields marked optional stay empty unless you fill them in.</p>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th scope="col">Data</th><th scope="col">Why we need it</th><th scope="col">How long we keep it</th></tr></thead>
+      <tbody>
+        <tr><td>Name, mobile number</td><td>To deliver your order and let the rider call you. You give it to us for this purpose, which the DPDP Act allows (section 7(a)).</td><td>With the order record until you ask us to delete it.</td></tr>
+        <tr><td>Delivery address and pincode</td><td>To deliver your order and confirm the address is inside our delivery area.</td><td>Deleted automatically {{addressDays}} days after the order is delivered or cancelled.</td></tr>
+        <tr><td>Your location at checkout (optional)</td><td>Only if you tick the box, to help the rider find you.</td><td>Deleted with the address, {{addressDays}} days after delivery or cancellation.</td></tr>
+        <tr><td>Order contents, amounts, payment method (cash or UPI), dates</td><td>To fulfil the order, handle refunds and keep the tax records GST law requires.</td><td>For as long as GST law requires, currently 72 months from the due date of the annual return for that year. After you ask us to delete your data, these records are kept without your name, number or address.</td></tr>
+        <tr><td>Your confirmation that you accept our terms and are 18 or older, with the date</td><td>To show that you agreed when you placed the order.</td><td>With the order record.</td></tr>
+        <tr><td>Email address (optional)</td><td>Only if you tick "Email me offers", to send you offers. This is based on your consent.</td><td>Until you unsubscribe or ask us to delete your data. Unsubscribing deletes the address.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>When you check your area with "Use my current location" on the home page, the check happens in your browser. Your location is not sent to us.</p>
+  <p>We do not ask for card numbers, bank details, date of birth, gender or any identity document. Payment happens at your door, in cash or through your own UPI app.</p>
+  <p>Our hosting provider, {{biz.hostingProvider}}, keeps standard server access logs (IP address, time and page requested) to keep the service secure. Your data is stored in {{biz.dataStorageLocation}}.</p>
+
+  <h2 id="not">3. What we never do</h2>
+  <ul>
+    <li>We do not sell or rent your personal data.</li>
+    <li>We do not use advertising, analytics or tracking cookies, and we do not build a profile of you.</li>
+    <li>We do not send marketing emails or messages unless you ask for them.</li>
+  </ul>
+
+  <h2 id="share">4. Who sees your data</h2>
+  <ul>
+    <li><strong>Our store staff</strong> see your order and delivery details to pack and dispatch it.</li>
+    <li><strong>The rider delivering your order</strong> sees your name, mobile number, address and, if you shared it, your location, for that order only.</li>
+    <li><strong>Our hosting provider</strong> ({{biz.hostingProvider}}) stores the data on our behalf and may not use it for anything else.</li>
+    <li><strong>Government authorities</strong>, only when a law requires us to share it.</li>
+  </ul>
+  <p>While your order is out for delivery, you see the rider's first name and their distance from you. We do not store the rider's location. It is held in memory only while the delivery is in progress.</p>
+
+  <h2 id="third">5. Third-party code on this site</h2>
+  <p>This site loads no third-party scripts, software development kits, fonts, maps, analytics or advertising tags. Every file comes from our own server, and our security settings tell your browser to block code from anywhere else. Fonts are the ones already installed on your device.</p>
+
+  <h2 id="security">6. How we protect it</h2>
+  <p>All traffic is encrypted with HTTPS. Only signed-in store staff and the assigned rider can see order details, and staff sign-ins expire after {{sessionHours}} hours. We collect as little as possible and delete addresses on a fixed schedule, so there is less to protect. If a breach affects your data, we will tell you and the Data Protection Board of India as the law requires.</p>
+
+  <h2 id="children">7. Children</h2>
+  <p>Our service is for adults. You must be 18 or older to place an order, and you confirm this at checkout. We do not knowingly collect personal data from anyone under 18. If you believe a child has given us their details, write to {{biz.privacyEmail}} and we will delete them.</p>
+
+  <h2 id="rights">8. Your rights and how to use them</h2>
+  <p>Under the DPDP Act you can:</p>
+  <ul>
+    <li>get a summary of the personal data we hold about you and how we use it;</li>
+    <li>have it corrected, completed or updated;</li>
+    <li>have it deleted, unless a law requires us to keep it;</li>
+    <li>withdraw consent you gave us, as easily as you gave it;</li>
+    <li>nominate someone to use these rights for you if you die or become unable to;</li>
+    <li>have your complaints heard.</li>
+  </ul>
+  <p>To download or delete your data yourself, use the <a href="/data-request">your data page</a>. It takes effect immediately. To stop offer emails, use the unsubscribe link in any email. For correction, nomination or anything else, write to {{biz.privacyEmail}}.</p>
+
+  <h2 id="grievance">9. Complaints</h2>
+  <p>Our grievance officer is {{biz.grievanceOfficer.name}}, {{biz.grievanceOfficer.designation}}. Email {{biz.grievanceOfficer.email}} or call {{biz.grievanceOfficer.phone}}. We acknowledge every complaint within 48 hours and resolve it within one month. If you are not satisfied with our answer, you can complain to the Data Protection Board of India.</p>
+
+  <h2 id="changes">10. Changes to this policy</h2>
+  <p>If we change this policy, we will publish the new version on this page with a new date. If the change affects how we use data you already gave us, we will ask for your consent again where the law requires it.</p>
+</article>
