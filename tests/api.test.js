@@ -88,6 +88,7 @@ test('pages: login first, role guards, security headers, no dashes, no third-par
     const js = await t.call(null, '/assets/js/login.js');
     assert.equal(js.headers.get('cache-control'), 'no-cache');
     assert.equal((await t.call(null, '/assets/js/login.js', { headers: { 'If-None-Match': js.headers.get('etag') } })).status, 304);
+    assert.equal((await t.call(null, '/assets/js/login.js', { headers: { 'If-None-Match': `W/${js.headers.get('etag')}` } })).status, 304, 'weak tag from a compressing proxy');
   } finally { await t.stop(); }
 });
 

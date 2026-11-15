@@ -990,7 +990,9 @@ export async function createApp({
     const long = /\.(jpg|png|ico|woff2)$/.test(file);
     const etag = `"${st.size.toString(36)}-${Math.floor(st.mtimeMs).toString(36)}"`;
     const headers = { ETag: etag, 'Cache-Control': production && long ? 'public, max-age=604800' : 'no-cache' };
-    if (req.headers['if-none-match'] === etag) { res.writeHead(304, headers); res.end(); return true; }
+    // Proxies that compress responses (Render does) mark the tag weak, as W/"...". Compare without that mark.
+    const sent = String(req.headers['if-none-match'] || '').split(',').map((x) => x.trim().replace(/^W\//, ''));
+    if (sent.includes(etag)) { res.writeHead(304, headers); res.end(); return true; }
     res.writeHead(200, { ...headers, 'Content-Type': type, 'Content-Length': st.size });
     if (req.method === 'HEAD') { res.end(); return true; }
     fs.createReadStream(file).pipe(res);
