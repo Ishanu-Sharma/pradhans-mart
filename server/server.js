@@ -984,8 +984,14 @@ export async function createApp({
     if (!st.isFile()) return false;
     const type = TYPES[path.extname(file).toLowerCase()];
     if (!type) return false;
-    const long = /\.(jpg|png|woff2)$/.test(file);
-    res.writeHead(200, { 'Content-Type': type, 'Content-Length': st.size, 'Cache-Control': production ? `public, max-age=${long ? 604800 : 3600}` : 'no-cache' });
+    // Photos and fonts rarely change: cache them for a week. Scripts, styles and icons change with every
+    // release, so browsers must check each time (a cheap 304 when unchanged); otherwise a visitor can
+    // run an old script against a new page after a deploy.
+    const long = /\.(jpg|png|ico|woff2)$/.test(file);
+    const etag = `"${st.size.toString(36)}-${Math.floor(st.mtimeMs).toString(36)}"`;
+    const headers = { ETag: etag, 'Cache-Control': production && long ? 'public, max-age=604800' : 'no-cache' };
+    if (req.headers['if-none-match'] === etag) { res.writeHead(304, headers); res.end(); return true; }
+    res.writeHead(200, { ...headers, 'Content-Type': type, 'Content-Length': st.size });
     if (req.method === 'HEAD') { res.end(); return true; }
     fs.createReadStream(file).pipe(res);
     return true;

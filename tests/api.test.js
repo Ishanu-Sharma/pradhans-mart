@@ -84,6 +84,10 @@ test('pages: login first, role guards, security headers, no dashes, no third-par
     assert.equal((await t.call(null, '/assets/products/amul-butter-100g.jpg')).headers.get('content-type'), 'image/jpeg');
     assert.equal((await t.call(null, '/assets/fonts/figtree-latin-400.woff2')).headers.get('content-type'), 'font/woff2');
     assert.equal((await t.call(null, '/assets/../../config/business.json')).status, 404);
+    // Scripts are revalidated on every visit, so a deploy can never leave an old script running.
+    const js = await t.call(null, '/assets/js/login.js');
+    assert.equal(js.headers.get('cache-control'), 'no-cache');
+    assert.equal((await t.call(null, '/assets/js/login.js', { headers: { 'If-None-Match': js.headers.get('etag') } })).status, 304);
   } finally { await t.stop(); }
 });
 
