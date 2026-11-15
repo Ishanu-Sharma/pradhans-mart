@@ -39,7 +39,17 @@ npm run launch-check # lists everything still blocking launch
 
 Environment variables: `PORT`, `ADMIN_PASSWORD` (12+ characters), `PUBLIC_URL` (your https custom domain), `NODE_ENV=production`, `TRUST_PROXY=1` when behind a proxy or load balancer.
 
-Data is stored in `data/db.json`. Back this file up. The host must give the app a persistent disk.
+## Database
+
+Set `MONGODB_URI` to store data in MongoDB (for example a free MongoDB Atlas M0 cluster). Without it the app uses `data/db.json`, which is fine locally but is wiped on hosts without a persistent disk, such as Render's free plan. Optional: `MONGODB_DB` picks the database name (default: the one in the connection string, else `test`).
+
+The app loads everything into memory at start and writes each change back, so run one instance per database. The catalogue is seeded automatically into an empty database. `npm test` also checks persistence against a local MongoDB if one is running.
+
+## Passwords and payments
+
+- Forgot password: a 6-digit code valid for 10 minutes, 5 tries, then the account's other sessions are signed out. With `DEMO_MODE=1` the code is shown on screen. Outside demo mode the option explains that SMS is not set up, until you connect an SMS provider.
+- Admin password: the `ADMIN_PASSWORD` setting of the host. Change it there to reset it.
+- UPI on delivery is shown but marked not available in demo mode; customers pay cash. A real launch needs a merchant UPI ID or a payment gateway.
 
 ## Launch rules
 

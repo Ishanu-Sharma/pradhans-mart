@@ -52,6 +52,8 @@ export function createRenderer({ root, business, store, production, getBrands, g
       hoursText: allDay() ? '24 hours a day, every day' : `from ${formatTime12(store.hours.open)} to ${formatTime12(store.hours.close)}, every day`,
       copyrightName: demo ? business.brandName : (business.legalName || business.brandName),
       footerLine: demo ? 'A demo project. No orders are delivered and no payment is taken.' : `${business.brandName} delivers only within ${store.city}, Assam. Prices include GST.`,
+      payShort: demo ? 'by cash' : 'by cash or UPI',
+      payLong: demo ? 'in cash' : 'in cash or by UPI',
       radiusKm: store.serviceArea.radiusKm,
       reportWithinHours: store.refunds.reportWithinHours, refundWithinDays: store.refunds.refundWithinDays,
       addressDays: store.retention.addressDaysAfterCompletion,

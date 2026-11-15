@@ -8,7 +8,7 @@
     <p class="auth-lead">Milk, atta, dal, tea, snacks and household goods from brands founded and owned in India.</p>
     <ul class="auth-collage" aria-hidden="true">{{{collage}}}</ul>
     <ul class="auth-facts">
-      <li><span class="tick"><svg aria-hidden="true" focusable="false"><use href="/assets/icons.svg#check"></use></svg></span>Pay on delivery, by cash or UPI</li>
+      <li><span class="tick"><svg aria-hidden="true" focusable="false"><use href="/assets/icons.svg#check"></use></svg></span>Pay on delivery, {{payShort}}</li>
       <li><span class="tick"><svg aria-hidden="true" focusable="false"><use href="/assets/icons.svg#check"></use></svg></span>Delivery &#8377;{{deliveryFee}}, free from &#8377;{{freeDeliveryFrom}}. No other charges.</li>
       <li><span class="tick"><svg aria-hidden="true" focusable="false"><use href="/assets/icons.svg#check"></use></svg></span>Pincodes {{pincodeFirst}} to {{pincodeLast}}, Guwahati</li>
     </ul>
@@ -42,12 +42,37 @@
             <p class="error" id="si-phone-error" hidden></p>
           </div>
           <div class="field">
-            <label for="si-password">Password</label>
+            <div class="label-row"><label for="si-password">Password</label><button type="button" class="link-button small" data-mode="forgot">Forgot password?</button></div>
             <input class="input" id="si-password" type="password" autocomplete="current-password" required>
             <p class="error" id="si-password-error" hidden></p>
           </div>
           <button class="btn btn-primary btn-block" type="submit" id="signin-submit">Sign in</button>
           <p class="switch-row"><span id="new-text">New to Pradhan&rsquo;s Mart?</span> <button type="button" class="link-button" data-mode="register">Create an account</button></p>
+        </form>
+
+        <form id="forgot-form" novalidate aria-label="Reset your password" hidden>
+          <p class="muted small" id="forgot-intro">Enter the mobile number of your account. We will give you a 6-digit code to set a new password.</p>
+          <div class="field">
+            <label for="fp-phone">Mobile number</label>
+            <input class="input" id="fp-phone" type="tel" inputmode="tel" autocomplete="username" required>
+            <p class="error" id="fp-phone-error" hidden></p>
+          </div>
+          <div id="fp-step2" hidden>
+            <div id="fp-code-note" role="status" aria-live="polite"></div>
+            <div class="field">
+              <label for="fp-code">6-digit code</label>
+              <input class="input" id="fp-code" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
+              <p class="error" id="fp-code-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="fp-password">New password</label>
+              <span class="hint" id="fp-password-hint">At least 8 characters.</span>
+              <input class="input" id="fp-password" type="password" autocomplete="new-password" aria-describedby="fp-password-hint">
+              <p class="error" id="fp-password-error" hidden></p>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-block" type="submit" id="forgot-submit">Send code</button>
+          <p class="switch-row">Remembered it? <button type="button" class="link-button" data-mode="signin">Back to sign in</button></p>
         </form>
 
         <form id="register-form" novalidate aria-label="Create an account" hidden>

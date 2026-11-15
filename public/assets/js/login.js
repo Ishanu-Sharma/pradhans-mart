@@ -4,6 +4,7 @@ import { rules } from './validators.js';
 const alertBox = $('#login-alert');
 const signin = $('#signin-form');
 const register = $('#register-form');
+const forgot = $('#forgot-form');
 const tabs = $$('[role="tab"]', $('.role-tabs'));
 const params = new URLSearchParams(window.location.search);
 
@@ -19,6 +20,7 @@ const next = /^\/(?!\/)[\w\-/?=&.]*$/.test(nextParam) ? nextParam : '';
 
 let role = ['rider', 'store'].includes(params.get('role')) ? params.get('role') : 'customer';
 let mode = window.location.hash === '#register' ? 'register' : 'signin';
+let resetStep = 1;
 
 function clearErrors(form) { for (const el of $$('[aria-invalid="true"]', form)) setError(el, ''); }
 
@@ -36,17 +38,19 @@ function render() {
   $('#register-submit').textContent = role === 'customer' ? 'Create account' : role === 'rider' ? 'Sign up to deliver' : 'Register store';
   signin.hidden = mode !== 'signin';
   register.hidden = mode !== 'register';
+  forgot.hidden = mode !== 'forgot';
   for (const el of $$('[data-for]', register)) {
     const want = el.dataset.for;
     el.hidden = !(want === role || (want === 'partner' && role !== 'customer'));
   }
-  $('#auth-title').textContent = mode === 'signin' ? 'Sign in to continue' : (role === 'customer' ? 'Create your account' : role === 'rider' ? 'Become a delivery partner' : 'Register your store');
+  $('#auth-title').textContent = mode === 'signin' ? 'Sign in to continue' : mode === 'forgot' ? 'Reset your password' : (role === 'customer' ? 'Create your account' : role === 'rider' ? 'Become a delivery partner' : 'Register your store');
 }
 
 function selectRole(r, focus) {
   role = r;
   alertBox.innerHTML = '';
-  clearErrors(signin); clearErrors(register);
+  clearErrors(signin); clearErrors(register); clearErrors(forgot);
+  resetForgot();
   render();
   if (focus) tabs.find((t) => t.dataset.role === r).focus();
 }
@@ -62,8 +66,9 @@ for (const b of $$('[data-mode]')) {
   b.addEventListener('click', () => {
     mode = b.dataset.mode;
     alertBox.innerHTML = '';
+    if (mode === 'forgot') { resetForgot(); if ($('#si-phone').value) $('#fp-phone').value = $('#si-phone').value; }
     render();
-    (mode === 'signin' ? $('#si-phone') : $('#rg-name')).focus();
+    ({ signin: $('#si-phone'), register: $('#rg-name'), forgot: $('#fp-phone') })[mode].focus();
   });
 }
 
@@ -86,6 +91,55 @@ signin.addEventListener('submit', async (e) => {
     showAlert(alertBox, 'error', err.message, err.status === 401 ? 'Check the number and password, and that the right tab is selected above.' : '');
     $('#si-password').value = '';
     $('#si-password').focus();
+  }
+});
+
+// ---------- forgot password ----------
+function resetForgot() {
+  resetStep = 1;
+  $('#fp-step2').hidden = true;
+  $('#fp-code-note').innerHTML = '';
+  $('#fp-code').value = ''; $('#fp-password').value = '';
+  $('#fp-phone').readOnly = false;
+  $('#forgot-submit').textContent = 'Send code';
+}
+liveValidate($('#fp-phone'), (v) => rules.phone(v));
+liveValidate($('#fp-password'), (v) => rules.password(v));
+forgot.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  alertBox.innerHTML = '';
+  const btn = $('#forgot-submit');
+  if (resetStep === 1) {
+    if (!setError($('#fp-phone'), rules.phone($('#fp-phone').value))) { $('#fp-phone').focus(); return; }
+    btn.disabled = true;
+    try {
+      const res = await api('/api/auth/forgot', { method: 'POST', body: { role, phone: $('#fp-phone').value } });
+      resetStep = 2;
+      $('#fp-phone').readOnly = true;
+      $('#fp-step2').hidden = false;
+      btn.textContent = 'Set new password';
+      $('#fp-code-note').innerHTML = res.demoCode
+        ? `<div class="notice notice-info"><strong>Demo: your code is</strong><p class="code-box">${res.demoCode}</p><p class="small">A live app would send this code to your phone by SMS. It works for 10 minutes.</p></div>`
+        : `<div class="notice notice-info"><p>${res.message} Check that the right tab is selected above.</p></div>`;
+      $('#fp-code').focus();
+    } catch (err) {
+      showAlert(alertBox, 'error', 'We could not send a code.', err.message);
+    } finally { btn.disabled = false; }
+    return;
+  }
+  setError($('#fp-code'), /^\d{6}$/.test($('#fp-code').value.trim()) ? '' : 'Enter the 6-digit code.');
+  setError($('#fp-password'), rules.password($('#fp-password').value));
+  if (!focusFirstError(forgot)) return;
+  btn.disabled = true;
+  try {
+    const res = await api('/api/auth/reset', { method: 'POST', body: { role, phone: $('#fp-phone').value, code: $('#fp-code').value.trim(), password: $('#fp-password').value } });
+    go(res.home);
+  } catch (err) {
+    btn.disabled = false;
+    if (err.data?.fields) {
+      for (const [k, msg] of Object.entries(err.data.fields)) { const el = $(`#fp-${k}`); if (el) setError(el, msg); }
+      focusFirstError(forgot);
+    } else showAlert(alertBox, 'error', 'Your password was not changed.', err.message);
   }
 });
 

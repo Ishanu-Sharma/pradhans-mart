@@ -14,7 +14,7 @@ const results = [];
 const check = (name, ok, detail = '') => { results.push({ name, ok }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  (${detail})` : ''}`); };
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pmart-e2e-'));
-const app = createApp({ dataDir, env: { ADMIN_PASSWORD: 'e2e-admin-password' }, clock: () => new Date('2026-11-15T06:30:00Z') });
+const app = await createApp({ dataDir, env: { ADMIN_PASSWORD: 'e2e-admin-password', DEMO_MODE: '1' }, clock: () => new Date('2026-11-15T06:30:00Z') });
 await new Promise((r) => app.server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${app.server.address().port}`;
 
@@ -130,6 +130,8 @@ try {
   await click('#save-address');
   await evaluate("document.getElementById('step-1').requestSubmit();");
   check('step 2 opens with progress updated', await waitFor("!document.getElementById('step-2').hidden && document.querySelector('#steps li[data-step=\"1\"]').dataset.state === 'done'"));
+  check('UPI is shown as not available in the demo', await evaluate("const u = document.querySelector('input[name=payment][value=upi_on_delivery]'); return u.disabled && u.closest('label').textContent.includes('Not available in this demo') && document.querySelector('input[name=payment][value=cod]').checked;"));
+  await evaluate("document.querySelector('input[name=payment][value=cod]').checked = false;");
   await evaluate("document.getElementById('step-2').requestSubmit();");
   check('payment choice is required', await evaluate("return !document.getElementById('payment-error').hidden;"));
   await click('input[name=payment][value=cod]');
@@ -163,7 +165,7 @@ try {
   await signIn('store', '9000000001');
   check('store partner lands on the store app', await waitFor("location.pathname === '/store' && !document.getElementById('workspace').hidden"));
   check('store switch shows accepting orders', await evaluate("return document.getElementById('online-switch').getAttribute('aria-checked') === 'true';"));
-  const two = await as('cust2', '/api/orders', { items: [{ id: 'tata-salt-1kg', qty: 2 }], customer: { name: 'Rina Bora', phone: '7002000001', house: 'H 12', street: 'Zoo Road', landmark: '', pincode: '781005' }, payment: 'upi_on_delivery', consents: {}, expectedTotal: 81 });
+  const two = await as('cust2', '/api/orders', { items: [{ id: 'tata-salt-1kg', qty: 2 }], customer: { name: 'Rina Bora', phone: '7002000001', house: 'H 12', street: 'Zoo Road', landmark: '', pincode: '781005' }, payment: 'cod', consents: {}, expectedTotal: 81 });
   check('new request appears live with a countdown', await waitFor(`document.querySelector('[data-order="${two.id}"] .countdown p')?.textContent.includes('seconds')`));
   check('request is announced for screen readers', await evaluate("return document.getElementById('announcer').textContent.includes('New order request');"));
   await click(`[data-order="${two.id}"] [data-act="accept"]`);
@@ -188,9 +190,28 @@ try {
   check('delivered returns the rider to waiting', await waitFor("document.getElementById('rider-body').textContent.includes('Waiting for a delivery request')"));
   await signOut();
 
+  // ---------- forgot password ----------
+  await go('/login');
+  await click('[data-mode="forgot"]');
+  check('forgot password opens from sign in', await evaluate("return !document.getElementById('forgot-form').hidden && document.activeElement.id === 'fp-phone';"));
+  await fill({ 'fp-phone': '9864012345' });
+  await evaluate("document.getElementById('forgot-form').requestSubmit();");
+  check('demo shows the reset code on screen', await waitFor("/^[0-9]{6}$/.test(document.querySelector('.code-box')?.textContent || '')"));
+  const code = await evaluate("return document.querySelector('.code-box').textContent;");
+  await fill({ 'fp-code': code, 'fp-password': 'brand-new-pass' });
+  await evaluate("document.getElementById('forgot-form').requestSubmit();");
+  check('reset signs the customer in', await waitFor("location.pathname === '/shop'"));
+  await signOut();
+  await go('/login');
+  await fill({ 'si-phone': '9864012345', 'si-password': 'brand-new-pass' });
+  await evaluate("document.getElementById('signin-form').requestSubmit();");
+  check('new password works', await waitFor("location.pathname === '/shop'"));
+  await signOut();
+
   // ---------- admin interface ----------
   await register('newRider', 'rider', '9100000002', { name: 'Pranjal Nath', vehicle: 'bicycle' });
   await go('/admin');
+  check('admin sign-in explains how to reset its password', await evaluate("return document.querySelector('.forgot-admin').textContent.includes('ADMIN_PASSWORD');"));
   await fill({ password: 'e2e-admin-password' });
   await evaluate("document.getElementById('login').requestSubmit();");
   check('admin sees live stats', await waitFor("document.querySelectorAll('#stats .stat').length === 8"));

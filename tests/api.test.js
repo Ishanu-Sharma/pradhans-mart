@@ -13,7 +13,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Starts an isolated app. Offers expire fast so dispatch can be tested.
 async function start(opts = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pmart-test-'));
-  const app = createApp({ dataDir: dir, env: { ADMIN_PASSWORD: 'test-password-123', ...(opts.env || {}) }, clock: opts.clock || NOON_IST, rateScale: opts.rateScale ?? 100, offerMs: { store: 600, rider: 600 }, sweepMs: 200, noStoreCancelMs: opts.noStoreCancelMs ?? 60_000 });
+  const app = await createApp({ dataDir: dir, env: { ADMIN_PASSWORD: 'test-password-123', ...(opts.env || {}) }, clock: opts.clock || NOON_IST, rateScale: opts.rateScale ?? 100, offerMs: { store: 600, rider: 600 }, sweepMs: 200, noStoreCancelMs: opts.noStoreCancelMs ?? 60_000 });
   await new Promise((r) => app.server.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${app.server.address().port}`;
   const jar = {};
@@ -315,5 +315,90 @@ test('demo mode and the production launch gate', async () => {
     assert.equal((await t.call(null, '/api/config')).json.isOpen, true, 'open at midnight in demo');
     assert.equal(await (await fetch(`${t.base}/robots.txt`)).text(), 'User-agent: *\nDisallow: /\n');
   } finally { await t.stop(); }
-  assert.throws(() => createApp({ dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'pmart-prod-')), env: { NODE_ENV: 'production' } }), /Launch checks failed/);
+  await assert.rejects(createApp({ dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'pmart-prod-')), env: { NODE_ENV: 'production' } }), /Launch checks failed/);
+});
+
+test('forgot password: code shown in demo, wrong code counted, reset signs out other devices', async () => {
+  const t = await start({ env: { DEMO_MODE: '1' } });
+  const { call } = t;
+  try {
+    await reg(call, 'phoneA', 'customer', { phone: '9864012345' });
+    await call('phoneB', '/api/auth/login', { body: { role: 'customer', phone: '9864012345', password: 'password-123' } });
+    const none = await call(null, '/api/auth/forgot', { body: { role: 'customer', phone: '9000000000' } });
+    assert.equal(none.json.sent, true);
+    assert.equal(none.json.demoCode, undefined, 'no code for a number without an account');
+    const f = await call(null, '/api/auth/forgot', { body: { role: 'customer', phone: '9864012345' } });
+    assert.match(f.json.demoCode, /^\d{6}$/);
+    const wrong = f.json.demoCode === '111111' ? '222222' : '111111';
+    let r = await call(null, '/api/auth/reset', { body: { role: 'customer', phone: '9864012345', code: wrong, password: 'new-password-1' } });
+    assert.equal(r.status, 422);
+    assert.ok(r.json.fields.code);
+    r = await call('phoneC', '/api/auth/reset', { body: { role: 'customer', phone: '9864012345', code: f.json.demoCode, password: 'short' } });
+    assert.ok(r.json.fields.password);
+    r = await call('phoneC', '/api/auth/reset', { body: { role: 'customer', phone: '9864012345', code: f.json.demoCode, password: 'new-password-1' } });
+    assert.equal(r.status, 200);
+    assert.equal(r.json.home, '/shop');
+    assert.equal((await call('phoneC', '/api/account/me')).status, 200, 'signed in after reset');
+    assert.equal((await call('phoneB', '/api/account/me')).status, 401, 'other devices signed out');
+    assert.equal((await call(null, '/api/auth/reset', { body: { role: 'customer', phone: '9864012345', code: f.json.demoCode, password: 'again-pass-1' } })).status, 422, 'code works once');
+    assert.equal((await call('x', '/api/auth/login', { body: { role: 'customer', phone: '9864012345', password: 'password-123' } })).status, 401);
+    assert.equal((await call('x', '/api/auth/login', { body: { role: 'customer', phone: '9864012345', password: 'new-password-1' } })).status, 200);
+    assert.ok(!JSON.stringify(t.app.db.data.users).includes(`"${f.json.demoCode}"`), 'code stored only as a hash');
+    await reg(call, 'rid', 'rider', { phone: '9100000001', vehicle: 'scooter' });
+    const fr = await call(null, '/api/auth/forgot', { body: { role: 'rider', phone: '9100000001' } });
+    assert.equal((await call('rid2', '/api/auth/reset', { body: { role: 'rider', phone: '9100000001', code: fr.json.demoCode, password: 'rider-pass-9' } })).json.home, '/rider');
+  } finally { await t.stop(); }
+  const live = await start();
+  try {
+    await reg(live.call, 'c', 'customer', { phone: '9864012345' });
+    assert.equal((await live.call(null, '/api/auth/forgot', { body: { role: 'customer', phone: '9864012345' } })).status, 503, 'outside demo mode SMS must be set up first');
+  } finally { await live.stop(); }
+});
+
+test('UPI is offered but marked not available in demo mode', async () => {
+  const t = await start({ env: { DEMO_MODE: '1' } });
+  const { call } = t;
+  try {
+    const methods = (await call(null, '/api/config')).json.paymentMethods;
+    assert.deepEqual(methods.map((m) => [m.id, m.available]), [['cod', true], ['upi_on_delivery', false]]);
+    await world(t);
+    const r = await call('cust', '/api/orders', { body: orderBody({ payment: 'upi_on_delivery' }) });
+    assert.equal(r.status, 422);
+    assert.match(r.json.fields.payment, /not available in this demo/);
+    assert.equal((await call('cust', '/api/orders', { body: orderBody({ payment: 'cod' }) })).status, 201);
+  } finally { await t.stop(); }
+});
+
+// Runs against a real MongoDB when one is reachable (the local server, or MONGODB_TEST_URI).
+test('MongoDB: data survives a restart', async (ctx) => {
+  const uri = process.env.MONGODB_TEST_URI || 'mongodb://127.0.0.1:27017';
+  const { MongoClient } = await import('mongodb');
+  const probe = new MongoClient(uri, { serverSelectionTimeoutMS: 1500 });
+  try { await probe.connect(); } catch { ctx.skip('no MongoDB reachable'); return; }
+  const dbName = `pmart_test_${Date.now()}`;
+  const env = { ADMIN_PASSWORD: 'test-password-123', MONGODB_URI: uri, MONGODB_DB: dbName };
+  const post = (base, p, body) => fetch(`${base}${p}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  try {
+    let app = await createApp({ env, clock: NOON_IST, rateScale: 100 });
+    assert.equal(app.db.kind, 'mongodb');
+    await new Promise((r) => app.server.listen(0, '127.0.0.1', r));
+    let base = `http://127.0.0.1:${app.server.address().port}`;
+    const r = await post(base, '/api/auth/register', { role: 'customer', name: 'Rina Bora', phone: '7896000001', password: 'password-123', terms: true, age: true });
+    assert.equal(r.status, 201);
+    await app.close();
+    assert.equal(await probe.db(dbName).collection('products').countDocuments(), 29, 'catalogue seeded');
+    const stored = await probe.db(dbName).collection('users').findOne({ phone: '7896000001' });
+    assert.equal(stored.name, 'Rina Bora');
+    assert.ok(stored.passwordHash && !JSON.stringify(stored).includes('password-123'));
+
+    app = await createApp({ env, clock: NOON_IST, rateScale: 100 });
+    await new Promise((res) => app.server.listen(0, '127.0.0.1', res));
+    base = `http://127.0.0.1:${app.server.address().port}`;
+    const login = await post(base, '/api/auth/login', { role: 'customer', phone: '7896000001', password: 'password-123' });
+    assert.equal(login.status, 200, 'account still there after restart');
+    await app.close();
+  } finally {
+    await probe.db(dbName).dropDatabase();
+    await probe.close();
+  }
 });

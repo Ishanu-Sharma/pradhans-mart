@@ -102,7 +102,7 @@ async function placeOrder() {
     if (preferencesAllowed()) storage.set('pm_area', { pincode: v.pincode });
     cart.clear();
     $('#confirmation').innerHTML = `
-      <div class="notice notice-success"><strong>Order ${esc(res.id)} is placed.</strong><p>We are finding a store to pack it. Pay ${money(res.total)} to the delivery partner in cash or by UPI when it arrives.</p></div>
+      <div class="notice notice-success"><strong>Order ${esc(res.id)} is placed.</strong><p>We are finding a store to pack it. Pay ${money(res.total)} to the delivery partner ${config.paymentMethods.every((m) => m.available) ? 'in cash or by UPI' : 'in cash'} when it arrives.</p></div>
       <p><a class="btn btn-primary" href="/order?id=${esc(res.id)}">Track this order</a></p>`;
     $('#summary-lines').closest('aside').hidden = true;
     setStep(3);
@@ -166,7 +166,11 @@ async function start() {
   for (const [k, v] of Object.entries(fill)) { const el = $(`#${k}`); if (el && v) el.value = v; }
   for (const f of fields1) liveValidate($(`#${f}`), (v) => check(f, v));
 
-  $('#payment-options').innerHTML = config.paymentMethods.map((m) => `<label class="radio-card"><input type="radio" name="payment" value="${esc(m.id)}"> ${esc(m.label)}</label>`).join('');
+  $('#payment-options').innerHTML = config.paymentMethods.map((m) => (m.available
+    ? `<label class="radio-card"><input type="radio" name="payment" value="${esc(m.id)}"> ${esc(m.label)}</label>`
+    : `<label class="radio-card is-unavailable"><input type="radio" name="payment" value="${esc(m.id)}" disabled aria-describedby="note-${esc(m.id)}"> ${esc(m.label)} <span class="unavailable-note" id="note-${esc(m.id)}">${esc(m.note)}</span></label>`)).join('');
+  const usable = config.paymentMethods.filter((m) => m.available);
+  if (usable.length === 1) $(`input[name="payment"][value="${usable[0].id}"]`).checked = true;
   $('#payment-options').addEventListener('change', () => setGroupError(''));
   $('#marketing').addEventListener('change', (e) => {
     $('#email-field').hidden = !e.target.checked;

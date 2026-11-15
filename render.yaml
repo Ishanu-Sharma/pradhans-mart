@@ -14,7 +14,7 @@ services:
         value: "1"
       - key: TRUST_PROXY
         value: "1"
-      - key: DATA_LOCATION
-        value: Singapore (Render servers)
+      - key: MONGODB_URI
+        sync: false
       - key: ADMIN_PASSWORD
         generateValue: true

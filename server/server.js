@@ -34,7 +34,7 @@ const STORE_WORK = ['accepted', 'packed', 'rider_assigned'];
 const VEHICLES = { bicycle: 'Bicycle', scooter: 'Scooter', motorcycle: 'Motorcycle' };
 const ROLES = ['customer', 'rider', 'store'];
 
-export function createApp({
+export async function createApp({
   dataDir = path.join(root, 'data'), env = process.env, clock = () => new Date(), rateScale = 1,
   offerMs = { store: 60_000, rider: 45_000 }, noStoreCancelMs = 10 * 60_000, sweepMs = 15_000
 } = {}) {
@@ -59,13 +59,13 @@ export function createApp({
     if (!business.registeredAddress) business.registeredAddress = 'Guwahati, Assam (no registered office)';
     if (!business.storeAddress) business.storeAddress = 'Guwahati, Assam (stores are run by store partners)';
     if (!business.hostingProvider) business.hostingProvider = 'Render (render.com)';
-    if (!business.dataStorageLocation) business.dataStorageLocation = env.DATA_LOCATION || 'Render servers';
+    if (!business.dataStorageLocation) business.dataStorageLocation = env.MONGODB_URI ? 'MongoDB Atlas, a database service run by MongoDB, Inc.' : 'files on Render servers';
     if (!business.policyEffectiveDate) business.policyEffectiveDate = new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' }).format(clock());
     fillNa(business);
     business.cin = '';
     store.hours = { ...store.hours, open: '00:00', close: '00:00' };
   }
-  const db = createDb(dataDir);
+  const db = await createDb({ dataDir, mongoUri: env.MONGODB_URI, mongoDbName: env.MONGODB_DB });
   const baseUrl = env.PUBLIC_URL || env.RENDER_EXTERNAL_URL || `http://localhost:${env.PORT || 3000}`;
 
   let adminPassword = env.ADMIN_PASSWORD;
@@ -74,6 +74,8 @@ export function createApp({
     console.log(`[dev] No ADMIN_PASSWORD set. This run's admin password: ${adminPassword}`);
   }
 
+  // UPI needs a payment gateway account and a real merchant UPI ID, so the demo offers cash only.
+  const paymentMethods = store.paymentMethods.map((m) => ({ ...m, available: !(demo && m.id === 'upi_on_delivery'), note: demo && m.id === 'upi_on_delivery' ? 'Not available in this demo' : '' }));
   const activeProducts = () => db.data.products.filter((p) => p.active);
   const brands = () => [...new Set(activeProducts().map((p) => p.brand))].sort((a, b) => a.localeCompare(b));
   const renderer = createRenderer({ root, business, store, production, getBrands: brands, getProducts: activeProducts, demo });
@@ -165,7 +167,7 @@ export function createApp({
 
   // ---------- views ----------
   const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || '';
-  const paymentLabel = (id) => store.paymentMethods.find((m) => m.id === id)?.label || id;
+  const paymentLabel = (id) => paymentMethods.find((m) => m.id === id)?.label || id;
   const itemCount = (o) => o.items.reduce((n, i) => n + i.qty, 0);
 
   function waitingText(o) {
@@ -401,7 +403,9 @@ export function createApp({
       else if (!inServiceRadius(loc, store.serviceArea)) fields.location = 'This location is outside our delivery area in Guwahati.';
       else location = { lat: Math.round(loc.lat * 1e5) / 1e5, lng: Math.round(loc.lng * 1e5) / 1e5 };
     }
-    if (!store.paymentMethods.some((m) => m.id === b.payment)) fields.payment = 'Choose how you will pay.';
+    const method = paymentMethods.find((m) => m.id === b.payment);
+    if (!method) fields.payment = 'Choose how you will pay.';
+    else if (!method.available) fields.payment = `${method.label} is not available in this demo. Choose cash on delivery.`;
     const consents = b.consents || {};
     let email = null;
     if (consents.marketing === true) {
@@ -591,7 +595,7 @@ export function createApp({
       return sendJson(res, 200, {
         brandName: business.brandName, city: store.city, serviceArea: store.serviceArea, isOpen: isOpen(store.hours, clock()),
         hours: { open: formatTime12(store.hours.open), close: formatTime12(store.hours.close), allDay: store.hours.open === store.hours.close },
-        fees: store.fees, limits: store.limits, paymentMethods: store.paymentMethods, categories, vehicles: VEHICLES, demo,
+        fees: store.fees, limits: store.limits, paymentMethods, categories, vehicles: VEHICLES, demo,
         openStores: openStores().length
       });
     }
@@ -648,6 +652,44 @@ export function createApp({
       if (!u || !ok) throw new HttpError(401, 'That mobile number and password do not match an account.');
       if (u.status === 'suspended') throw new HttpError(403, 'This account is suspended. Contact support.');
       if (u.status === 'rejected') throw new HttpError(403, 'Your application was not approved. Contact support for details.');
+      startSession(res, { role, userId: u.id }, sessionHours(role));
+      return sendJson(res, 200, { role, status: u.status, home: HOME[role] });
+    }
+    // Forgot password: a 6-digit code, valid for 10 minutes, 5 tries.
+    // A live service sends it by SMS. No SMS provider is connected, so the demo shows it on screen.
+    if (m === 'POST' && p === '/api/auth/forgot') {
+      if (!limit.auth(clientIp(req))) throw new HttpError(429, 'Too many attempts. Wait 15 minutes and try again.');
+      const b = await readJson(req);
+      const role = ROLES.includes(b.role) ? b.role : 'customer';
+      const e = rules.phone(b.phone);
+      if (e) throw new HttpError(422, 'Check the highlighted details.', { fields: { phone: e } });
+      if (!demo) throw new HttpError(503, 'Password reset by SMS is not set up yet. Contact support to reset your password.');
+      const u = db.data.users.find((x) => x.role === role && x.phone === normalisePhone(b.phone) && x.status !== 'suspended' && x.status !== 'rejected');
+      const generic = { sent: true, message: 'If an account exists for this number, a code has been sent.' };
+      if (!u) return sendJson(res, 200, generic);
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      u.reset = { codeHash: sha256(`${u.id}:${code}`), expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(), attempts: 0 };
+      db.save();
+      return sendJson(res, 200, { ...generic, demoCode: code });
+    }
+    if (m === 'POST' && p === '/api/auth/reset') {
+      if (!limit.auth(clientIp(req))) throw new HttpError(429, 'Too many attempts. Wait 15 minutes and try again.');
+      const b = await readJson(req);
+      const role = ROLES.includes(b.role) ? b.role : 'customer';
+      const fields = {};
+      const pe = rules.phone(b.phone); if (pe) fields.phone = pe;
+      if (!/^\d{6}$/.test(String(b.code || '').trim())) fields.code = 'Enter the 6-digit code.';
+      const pw = rules.password(b.password); if (pw) fields.password = pw;
+      if (Object.keys(fields).length) throw new HttpError(422, 'Check the highlighted details.', { fields });
+      const u = db.data.users.find((x) => x.role === role && x.phone === normalisePhone(b.phone));
+      const bad = () => new HttpError(422, 'Check the highlighted details.', { fields: { code: 'That code is not correct or has expired. Ask for a new one.' } });
+      if (!u || !u.reset) throw bad();
+      if (Date.parse(u.reset.expiresAt) < Date.now() || u.reset.attempts >= 5) { delete u.reset; db.save(); throw bad(); }
+      if (!safeEqual(u.reset.codeHash, sha256(`${u.id}:${String(b.code).trim()}`))) { u.reset.attempts += 1; db.save(); throw bad(); }
+      delete u.reset;
+      u.passwordHash = hashPassword(b.password);
+      db.save();
+      endSessionsFor(u.id); // signs out every other device
       startSession(res, { role, userId: u.id }, sessionHours(role));
       return sendJson(res, 200, { role, status: u.status, home: HOME[role] });
     }
@@ -1019,17 +1061,20 @@ export function createApp({
     server, db,
     close: () => new Promise((r) => {
       for (const set of [streams.stock, streams.admin, ...streams.users.values()]) for (const x of set) x.end();
-      server.close(r);
+      server.close(() => db.close().then(r, r));
     })
   };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   let app;
-  try { app = createApp(); } catch (err) {
+  try { app = await createApp(); } catch (err) {
     console.error(err.message);
     process.exit(1);
   }
   const port = Number(process.env.PORT || 3000);
-  app.server.listen(port, () => console.log(`Pradhan’s Mart running on http://localhost:${port}`));
+  app.server.listen(port, () => console.log(`Pradhan’s Mart running on http://localhost:${port} (data: ${app.db.kind})`));
+  const shutdown = () => { app.close().finally(() => process.exit(0)); };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
