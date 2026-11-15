@@ -1,0 +1,68 @@
+<div class="wrap app-main">
+  <div id="app-alert" role="status" aria-live="polite"></div>
+
+  <section class="big-card waiting-card" id="pending" hidden aria-labelledby="pending-title">
+    <svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#clock"></use></svg>
+    <h1 id="pending-title">Your store is waiting for approval</h1>
+    <p class="muted">Our admin team checks every new store before it can receive orders. This page updates as soon as you are approved.</p>
+  </section>
+
+  <div id="workspace" hidden>
+    <div class="app-hero">
+      <div>
+        <h1 id="store-title">Your store</h1>
+        <p id="store-sub"></p>
+      </div>
+      <button type="button" class="switch" role="switch" aria-checked="false" id="online-switch">
+        <span class="track" aria-hidden="true"></span><span id="online-label">Not accepting orders</span>
+      </button>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="Store sections">
+      <button role="tab" id="tab-orders" aria-controls="panel-orders" aria-selected="true">Orders <span class="tab-badge" id="offer-badge" hidden>0</span></button>
+      <button role="tab" id="tab-stock" aria-controls="panel-stock" aria-selected="false" tabindex="-1">Stock</button>
+    </div>
+
+    <section role="tabpanel" id="panel-orders" aria-labelledby="tab-orders" tabindex="-1">
+      <p class="visually-hidden" id="announcer" role="status" aria-live="assertive"></p>
+      <div class="board board-3">
+        <section class="column" aria-labelledby="col-new">
+          <h2 id="col-new">New requests <span class="count" id="count-new">0</span></h2>
+          <div id="list-new"></div>
+        </section>
+        <section class="column" aria-labelledby="col-pack">
+          <h2 id="col-pack">To pack <span class="count" id="count-pack">0</span></h2>
+          <div id="list-pack"></div>
+        </section>
+        <section class="column" aria-labelledby="col-hand">
+          <h2 id="col-hand">Waiting for pickup <span class="count" id="count-hand">0</span></h2>
+          <div id="list-hand"></div>
+        </section>
+      </div>
+      <section class="column done-col" aria-labelledby="col-done">
+        <h2 id="col-done">Handed over today <span class="count" id="count-done">0</span></h2>
+        <div id="list-done"></div>
+      </section>
+    </section>
+
+    <section role="tabpanel" id="panel-stock" aria-labelledby="tab-stock" tabindex="-1" hidden>
+      <form id="stock-form" class="panel" novalidate>
+        <div class="toolbar">
+          <div>
+            <h2>Stock on your shelves</h2>
+            <p class="muted small">Customers see an item as available when at least one open store has it. Accepting an order takes its items from your stock.</p>
+          </div>
+          <button class="btn btn-primary" type="submit">Save stock</button>
+        </div>
+        <div id="stock-alert" role="status" aria-live="polite"></div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <caption class="visually-hidden">Stock for each product</caption>
+            <thead><tr><th scope="col"><span class="visually-hidden">Photo</span></th><th scope="col">Product</th><th scope="col" class="num">In stock</th></tr></thead>
+            <tbody id="stock-rows"></tbody>
+          </table>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>

@@ -1,24 +1,26 @@
-<div class="wrap staff-main narrow">
-  <form id="login" class="panel login-box" novalidate hidden>
-    <h1>Rider sign-in</h1>
-    <div id="login-alert" role="alert"></div>
-    <div class="field">
-      <label for="code">Rider code</label>
-      <span class="hint" id="code-hint">The 10-character code the store gave you</span>
-      <input class="input" id="code" autocomplete="off" autocapitalize="characters" aria-describedby="code-hint" required>
-      <p class="error" id="code-error" hidden></p>
-    </div>
-    <button class="btn btn-primary btn-block" type="submit">Sign in</button>
-    <p class="small switch-row"><a href="/login">Other ways to sign in</a></p>
-  </form>
+<div class="wrap app-main rider-shell">
+  <div id="app-alert" role="status" aria-live="polite"></div>
 
-  <div id="deliveries" hidden>
-    <h1 id="rider-hello">Your deliveries</h1>
-    <p class="live-dot" id="live-state" data-state="off">Connecting</p>
-    <div class="notice notice-info">
-      <p>While an order is out for delivery, this page shares your location with that customer and the store. Sharing stops when you mark the order delivered or close this page. Locations are not saved.</p>
+  <section class="big-card waiting-card" id="pending" hidden aria-labelledby="pending-title">
+    <svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#clock"></use></svg>
+    <h1 id="pending-title">Your account is waiting for approval</h1>
+    <p class="muted">Our admin team checks every delivery partner before they can take deliveries. This page updates as soon as you are approved.</p>
+  </section>
+
+  <div id="workspace" hidden>
+    <div class="app-hero">
+      <div>
+        <h1 id="rider-title">Hello</h1>
+        <p id="rider-sub"></p>
+      </div>
+      <button type="button" class="switch" role="switch" aria-checked="false" id="online-switch">
+        <span class="track" aria-hidden="true"></span><span id="online-label">Offline</span>
+      </button>
     </div>
-    <div id="rider-alert" role="status" aria-live="polite"></div>
-    <div id="rider-orders"></div>
+    <p class="visually-hidden" id="announcer" role="status" aria-live="assertive"></p>
+    <div id="rider-body"></div>
+    <div class="notice notice-info small">
+      <p>While you are out for delivery, this page shares your location with that customer so they can see how far away you are. Sharing stops when you mark the order delivered or close this page. Your location is never saved.</p>
+    </div>
   </div>
 </div>

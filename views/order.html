@@ -1,25 +1,26 @@
 <div class="wrap">
   <div class="page-head">
-    <h1>Track your order</h1>
-    <p>Updates appear here as they happen. <span class="live-dot" id="live-state" data-state="off" hidden>Connecting</span></p>
+    <h1>Your order</h1>
+    <p><a href="/account">All your orders</a> <span class="live-dot" id="live-state" data-state="off" hidden>Connecting</span></p>
   </div>
 </div>
 
 <div class="wrap">
   <div id="order-alert" role="alert"></div>
   <div id="order-view" hidden>
+    <div class="status-card" id="status-card">
+      <p class="small" id="order-id"></p>
+      <p class="status-big" id="status-text" role="status" aria-live="polite"></p>
+      <p id="status-sub"></p>
+    </div>
     <div class="track-grid">
-      <section class="panel" aria-labelledby="status-title">
-        <h2 id="status-title" class="visually-hidden">Status</h2>
-        <p class="muted small" id="order-id"></p>
-        <p class="status-big" id="status-text" role="status" aria-live="polite"></p>
+      <section class="panel" aria-labelledby="progress-title">
+        <h2 id="progress-title">Progress</h2>
         <ol class="timeline" id="timeline"></ol>
         <div class="rider-box" id="rider-box" hidden>
           <p id="rider-text" aria-live="polite"></p>
         </div>
-        <div class="step-actions" id="cancel-row" hidden>
-          <button type="button" class="btn btn-danger" id="cancel-order">Cancel this order</button>
-        </div>
+        <div class="step-actions" id="cancel-row" hidden></div>
       </section>
       <section class="panel" aria-labelledby="items-title">
         <h2 id="items-title">Items</h2>
@@ -29,26 +30,4 @@
       </section>
     </div>
   </div>
-
-  <section class="panel narrow" id="lookup" aria-labelledby="lookup-title" hidden>
-    <h2 id="lookup-title">Find your order</h2>
-    <p class="muted">Enter the order ID from your confirmation and the mobile number you ordered with.</p>
-    <div id="device-orders"></div>
-    <form id="lookup-form" novalidate>
-      <div class="form-row two">
-        <div class="field">
-          <label for="orderId">Order ID</label>
-          <input class="input" id="orderId" autocomplete="off" autocapitalize="characters" required>
-          <p class="error" id="orderId-error" hidden></p>
-        </div>
-        <div class="field">
-          <label for="phone">Mobile number</label>
-          <input class="input" id="phone" type="tel" inputmode="tel" autocomplete="tel-national" required>
-          <p class="error" id="phone-error" hidden></p>
-        </div>
-      </div>
-      <button class="btn btn-primary" type="submit">Find my order</button>
-    </form>
-  </section>
-  <div class="section"></div>
 </div>

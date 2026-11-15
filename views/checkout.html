@@ -1,7 +1,7 @@
 <div class="wrap">
   <div class="page-head">
     <h1>Checkout</h1>
-    <p>Three short steps. Nothing is charged until your order arrives.</p>
+    <p>Three short steps. You pay only when your order arrives.</p>
   </div>
 </div>
 
@@ -10,14 +10,13 @@
     <ol class="steps" id="steps" aria-label="Checkout progress">
       <li data-step="1" aria-current="step"><span>Address</span></li>
       <li data-step="2"><span>Review and pay</span></li>
-      <li data-step="3"><span>Confirmation</span></li>
+      <li data-step="3"><span>Order placed</span></li>
     </ol>
     <div id="checkout-alert" role="alert"></div>
 
     <form id="step-1" class="panel" novalidate aria-labelledby="s1-title">
       <h2 id="s1-title" tabindex="-1">Where should we deliver?</h2>
       <p class="muted small">We use these details only to deliver this order. See the <a href="/privacy">privacy policy</a>.</p>
-      <p class="small" id="account-note"></p>
       <div class="form-row two">
         <div class="field">
           <label for="name">Full name</label>
@@ -26,7 +25,7 @@
         </div>
         <div class="field">
           <label for="phone">Mobile number</label>
-          <span class="hint" id="phone-hint">The rider calls this number if they cannot find you.</span>
+          <span class="hint" id="phone-hint">The delivery partner calls this number if they cannot find you.</span>
           <input class="input" id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel-national" aria-describedby="phone-hint" required>
           <p class="error" id="phone-error" hidden></p>
         </div>
@@ -56,13 +55,13 @@
       <div class="check">
         <input type="checkbox" id="share-location" name="shareLocation" aria-describedby="share-location-hint">
         <div>
-          <label for="share-location">Share my current location with the rider <span class="optional">(optional)</span></label>
-          <span class="hint" id="share-location-hint">Helps the rider find you. We delete it {{addressDays}} days after delivery.</span>
+          <label for="share-location">Share my current location with the delivery partner <span class="optional">(optional)</span></label>
+          <span class="hint" id="share-location-hint">Helps them find you. We delete it {{addressDays}} days after delivery.</span>
         </div>
       </div>
       <p class="error" id="share-location-error" hidden></p>
       <p class="small" id="location-status" role="status" aria-live="polite"></p>
-      <div class="check" id="save-address-row" hidden>
+      <div class="check">
         <input type="checkbox" id="save-address">
         <label for="save-address">Save this address to my account <span class="optional">(optional)</span></label>
       </div>
@@ -76,20 +75,10 @@
       <h2 id="s2-title" tabindex="-1">Review and pay</h2>
       <div id="review-address" class="notice notice-info"></div>
       <fieldset>
-        <legend class="legend" id="payment-legend">How will you pay the rider?</legend>
+        <legend class="legend">How will you pay the delivery partner?</legend>
         <div id="payment-options"></div>
         <p class="error" id="payment-error" hidden></p>
       </fieldset>
-      <div class="check">
-        <input type="checkbox" id="terms" required aria-describedby="terms-error">
-        <label for="terms">I accept the <a href="/terms" target="_blank" rel="noopener">Terms of service</a> and have read the <a href="/privacy" target="_blank" rel="noopener">Privacy policy</a>.</label>
-      </div>
-      <p class="error" id="terms-error" hidden></p>
-      <div class="check">
-        <input type="checkbox" id="age" required aria-describedby="age-error">
-        <label for="age">I am 18 years old or older.</label>
-      </div>
-      <p class="error" id="age-error" hidden></p>
       <div class="check">
         <input type="checkbox" id="marketing" aria-describedby="marketing-hint">
         <div>
@@ -118,6 +107,6 @@
     <h2 id="summary-title">Order summary</h2>
     <ul class="review-lines" id="summary-lines"></ul>
     <dl class="summary" id="summary-totals"></dl>
-    <p class="small muted">Prices include GST. You pay this amount to the rider in cash or by UPI.</p>
+    <p class="small muted">Prices include GST. You pay this amount to the delivery partner in cash or by UPI.</p>
   </aside>
 </div>

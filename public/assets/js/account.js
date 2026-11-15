@@ -1,4 +1,4 @@
-import { $, api, money, esc, setError, liveValidate, focusFirstError, showAlert, getConfig, formatTime, deviceOrders } from './common.js';
+import { $, api, money, esc, setError, liveValidate, focusFirstError, showAlert, getConfig, formatTime, productImage } from './common.js';
 import { rules } from './validators.js';
 
 const alertBox = $('#acct-alert');
@@ -9,9 +9,10 @@ let config;
 function renderOrders(orders) {
   $('#acct-orders').innerHTML = orders.length
     ? `<ul class="account-orders">${orders.map((o) => `<li>
-        <div><strong>${esc(o.id)}</strong> <span class="tag tag-${esc(o.status)}">${esc(o.statusLabel)}</span>
+        ${productImage({ image: o.image, category: 'staples' }, 48)}
+        <div class="grow"><div><strong>${esc(o.id)}</strong> <span class="tag tag-${esc(o.status)}">${esc(o.statusLabel)}</span></div>
         <span class="small muted">${esc(formatTime(o.createdAt))}, ${o.itemCount} ${o.itemCount === 1 ? 'item' : 'items'}, ${money(o.total)}</span></div>
-        <button type="button" class="btn btn-secondary btn-small" data-track="${esc(o.id)}" aria-label="Track order ${esc(o.id)}">Track</button>
+        <a class="btn btn-secondary btn-small" href="/order?id=${esc(o.id)}" aria-label="View order ${esc(o.id)}">View</a>
       </li>`).join('')}</ul>`
     : '<p class="muted">No orders yet. <a href="/shop">Start shopping</a>.</p>';
 }
@@ -22,20 +23,6 @@ function render(me) {
   for (const f of FIELDS) $(`#${f}`).value = me.address?.[f] || '';
   $('#remove-address').hidden = !me.address;
 }
-
-$('#acct-orders').addEventListener('click', async (e) => {
-  const btn = e.target.closest('[data-track]');
-  if (!btn) return;
-  btn.disabled = true;
-  try {
-    const { id, token } = await api(`/api/account/orders/${btn.dataset.track}/track`, { method: 'POST', body: {} });
-    deviceOrders.add(id, token);
-    window.location.href = `/order#${id}.${token}`;
-  } catch (err) {
-    btn.disabled = false;
-    showAlert(alertBox, 'error', 'That order could not be opened.', err.message);
-  }
-});
 
 addrForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -62,8 +49,8 @@ $('#remove-address').addEventListener('click', async () => {
 });
 
 $('#signout').addEventListener('click', async () => {
-  await api('/api/account/logout', { method: 'POST', body: {} }).catch(() => {});
-  window.location.href = '/';
+  await api('/api/auth/logout', { method: 'POST', body: {} }).catch(() => {});
+  window.location.href = '/login';
 });
 
 $('#delete-form').addEventListener('submit', async (e) => {
@@ -72,9 +59,7 @@ $('#delete-form').addEventListener('submit', async (e) => {
   if (!setError(pw, pw.value ? '' : 'Enter your password to confirm.')) { pw.focus(); return; }
   try {
     await api('/api/account/delete', { method: 'POST', body: { password: pw.value } });
-    for (const o of deviceOrders.list()) deviceOrders.remove(o.id);
-    document.querySelector('.account-grid').innerHTML = '<div class="notice notice-success"><strong>Your account is deleted.</strong><p>We removed your details. <a href="/">Go to the home page</a>.</p></div>';
-    $('#acct-sub').textContent = 'You are signed out.';
+    window.location.href = '/login';
   } catch (err) {
     if (err.data?.fields?.['del-password']) { setError(pw, err.data.fields['del-password']); pw.focus(); }
     else showAlert(alertBox, 'error', 'Your account was not deleted.', err.message);
@@ -83,12 +68,12 @@ $('#delete-form').addEventListener('submit', async (e) => {
 
 async function start() {
   let me;
-  try { me = await api('/api/account/me'); } catch (err) {
-    if (err.status === 401) { window.location.replace('/login?next=/account'); return; }
+  try {
+    [me, config] = await Promise.all([api('/api/account/me'), getConfig()]);
+  } catch (err) {
     showAlert(alertBox, 'error', 'Your account could not load.', err.message);
     return;
   }
-  config = await getConfig();
   for (const f of FIELDS) liveValidate($(`#${f}`), (v) => (f === 'pincode' ? rules.pincode(v, config.serviceArea.pincodes) : rules[f](v)));
   render(me);
 }

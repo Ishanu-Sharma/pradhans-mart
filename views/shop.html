@@ -1,23 +1,23 @@
-<div class="wrap">
-  <div class="page-head">
-    <h1>Shop</h1>
-    <p>Prices include GST. Stock updates live. <span class="live-dot" id="live-state" data-state="off">Connecting</span></p>
-  </div>
+<div class="wrap shop-top">
+  <h1 class="visually-hidden">Shop</h1>
   <div id="store-status"></div>
+  <section aria-labelledby="cat-title">
+    <h2 id="cat-title" class="section-title">Shop by category</h2>
+    <div class="tile-row" id="categories" role="group" aria-label="Filter by category"></div>
+  </section>
+  <section aria-labelledby="results-title">
+    <div class="results-head">
+      <h2 id="results-title" class="section-title">All products</h2>
+      <span class="live-dot" id="live-state" data-state="off">Connecting</span>
+    </div>
+    <p class="visually-hidden" id="results-status" role="status" aria-live="polite"></p>
+    <ul class="product-grid" id="products" aria-labelledby="results-title"></ul>
+    <p class="empty-state" id="empty" hidden>No products match your search.</p>
+  </section>
 </div>
 
-<div class="wrap shop-layout">
-  <div class="shop-tools">
-    <div class="field search">
-      <label for="search" class="visually-hidden">Search products</label>
-      <svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#search"></use></svg>
-      <input class="input" id="search" type="search" placeholder="Search by product or brand" autocomplete="off">
-    </div>
-    <div class="category-bar" id="categories" role="group" aria-label="Filter by category"></div>
-  </div>
-  <p class="visually-hidden" id="results-status" role="status" aria-live="polite"></p>
-  <ul class="product-grid" id="products" aria-label="Products"></ul>
-  <p class="empty-state" id="empty" hidden>No products match your search.</p>
+<div class="cart-bar" id="cart-bar" hidden>
+  <a href="#cart" data-cart-link-bar><span id="cart-bar-count">0 items</span><span>View cart</span></a>
 </div>
 
 <dialog class="drawer" id="cart" aria-labelledby="cart-title">

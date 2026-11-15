@@ -1,29 +1,73 @@
-import { $, $$, api, setError, liveValidate, focusFirstError, showAlert, esc } from './common.js';
+import { $, $$, api, setError, liveValidate, focusFirstError, showAlert, getConfig } from './common.js';
 import { rules } from './validators.js';
 
 const alertBox = $('#login-alert');
 const signin = $('#signin-form');
 const register = $('#register-form');
+const tabs = $$('[role="tab"]', $('.role-tabs'));
+const params = new URLSearchParams(window.location.search);
+
+const ROLE_TEXT = {
+  customer: { note: 'Order groceries for delivery in Guwahati.', newText: 'New to Pradhan’s Mart?', create: 'Create an account' },
+  rider: { note: 'Deliver orders near you. You choose when you are online.', newText: 'Want to deliver with us?', create: 'Sign up as a delivery partner' },
+  store: { note: 'Receive orders for your shop, pack them and hand them to delivery partners.', newText: 'Run a shop in Guwahati?', create: 'Register your store' }
+};
 
 // Only same-site paths are allowed as a destination after signing in.
-const nextParam = new URLSearchParams(window.location.search).get('next') || '';
-const next = /^\/(?!\/)[\w\-/]*$/.test(nextParam) ? nextParam : '/account';
+const nextParam = params.get('next') || '';
+const next = /^\/(?!\/)[\w\-/?=&.]*$/.test(nextParam) ? nextParam : '';
 
-function show(which) {
-  signin.hidden = which !== 'signin';
-  register.hidden = which !== 'register';
-  alertBox.innerHTML = '';
-  (which === 'signin' ? $('#si-phone') : $('#rg-name')).focus();
-}
-for (const b of $$('[data-show]')) b.addEventListener('click', () => show(b.dataset.show));
-if (window.location.hash === '#register') { signin.hidden = true; register.hidden = false; }
+let role = ['rider', 'store'].includes(params.get('role')) ? params.get('role') : 'customer';
+let mode = window.location.hash === '#register' ? 'register' : 'signin';
 
-function showFieldErrors(fields, prefix) {
-  for (const [k, msg] of Object.entries(fields)) {
-    const el = document.getElementById(`${prefix}-${k}`);
-    if (el) setError(el, msg);
+function clearErrors(form) { for (const el of $$('[aria-invalid="true"]', form)) setError(el, ''); }
+
+function render() {
+  for (const t of tabs) {
+    const on = t.dataset.role === role;
+    t.setAttribute('aria-selected', String(on));
+    t.tabIndex = on ? 0 : -1;
   }
+  $('#auth-panel').setAttribute('aria-labelledby', `tab-${role}`);
+  const txt = ROLE_TEXT[role];
+  $('#role-note').textContent = txt.note;
+  $('#new-text').textContent = txt.newText;
+  $('[data-mode="register"]').textContent = txt.create;
+  $('#register-submit').textContent = role === 'customer' ? 'Create account' : role === 'rider' ? 'Sign up to deliver' : 'Register store';
+  signin.hidden = mode !== 'signin';
+  register.hidden = mode !== 'register';
+  for (const el of $$('[data-for]', register)) {
+    const want = el.dataset.for;
+    el.hidden = !(want === role || (want === 'partner' && role !== 'customer'));
+  }
+  $('#auth-title').textContent = mode === 'signin' ? 'Sign in to continue' : (role === 'customer' ? 'Create your account' : role === 'rider' ? 'Become a delivery partner' : 'Register your store');
 }
+
+function selectRole(r, focus) {
+  role = r;
+  alertBox.innerHTML = '';
+  clearErrors(signin); clearErrors(register);
+  render();
+  if (focus) tabs.find((t) => t.dataset.role === r).focus();
+}
+for (const t of tabs) {
+  t.addEventListener('click', () => selectRole(t.dataset.role, false));
+  t.addEventListener('keydown', (e) => {
+    const i = tabs.indexOf(t);
+    const n = e.key === 'ArrowRight' ? tabs[(i + 1) % tabs.length] : e.key === 'ArrowLeft' ? tabs[(i - 1 + tabs.length) % tabs.length] : e.key === 'Home' ? tabs[0] : e.key === 'End' ? tabs.at(-1) : null;
+    if (n) { e.preventDefault(); selectRole(n.dataset.role, true); }
+  });
+}
+for (const b of $$('[data-mode]')) {
+  b.addEventListener('click', () => {
+    mode = b.dataset.mode;
+    alertBox.innerHTML = '';
+    render();
+    (mode === 'signin' ? $('#si-phone') : $('#rg-name')).focus();
+  });
+}
+
+const go = (home) => { window.location.href = next && role === 'customer' ? next : home; };
 
 liveValidate($('#si-phone'), (v) => rules.phone(v));
 signin.addEventListener('submit', async (e) => {
@@ -32,47 +76,54 @@ signin.addEventListener('submit', async (e) => {
   setError($('#si-phone'), rules.phone($('#si-phone').value));
   setError($('#si-password'), $('#si-password').value ? '' : 'Enter your password.');
   if (!focusFirstError(signin)) return;
-  const btn = signin.querySelector('button[type="submit"]');
+  const btn = $('#signin-submit');
   btn.disabled = true;
   try {
-    await api('/api/account/login', { method: 'POST', body: { phone: $('#si-phone').value, password: $('#si-password').value } });
-    window.location.href = next;
+    const res = await api('/api/auth/login', { method: 'POST', body: { role, phone: $('#si-phone').value, password: $('#si-password').value } });
+    go(res.home);
   } catch (err) {
     btn.disabled = false;
-    showAlert(alertBox, 'error', err.message, err.status === 401 ? 'Check the number and password, or create an account.' : '');
+    showAlert(alertBox, 'error', err.message, err.status === 401 ? 'Check the number and password, and that the right tab is selected above.' : '');
     $('#si-password').value = '';
     $('#si-password').focus();
   }
 });
 
-for (const [id, rule] of [['rg-name', rules.name], ['rg-phone', rules.phone], ['rg-password', rules.password]]) liveValidate($(`#${id}`), rule);
-for (const id of ['rg-terms', 'rg-age']) $(`#${id}`).addEventListener('change', (e) => { if (e.target.checked) setError(e.target, ''); });
+getConfig().then((config) => {
+  const checks = {
+    'rg-name': rules.name, 'rg-phone': rules.phone, 'rg-password': rules.password,
+    'rg-vehicle': (v) => (v ? '' : 'Choose your vehicle.'),
+    'rg-storeName': (v) => { const s = v.trim(); return s.length < 2 || s.length > 60 ? 'Enter the store name, 2 to 60 characters.' : ''; },
+    'rg-storeStreet': rules.street,
+    'rg-storePincode': (v) => rules.pincode(v, config.serviceArea.pincodes)
+  };
+  for (const [id, fn] of Object.entries(checks)) liveValidate($(`#${id}`), fn);
+  for (const id of ['rg-terms', 'rg-age']) $(`#${id}`).addEventListener('change', (e) => { if (e.target.checked) setError(e.target, ''); });
 
-register.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  alertBox.innerHTML = '';
-  setError($('#rg-name'), rules.name($('#rg-name').value));
-  setError($('#rg-phone'), rules.phone($('#rg-phone').value));
-  setError($('#rg-password'), rules.password($('#rg-password').value));
-  setError($('#rg-terms'), $('#rg-terms').checked ? '' : 'Accept the Terms of service and Privacy policy to create an account.');
-  setError($('#rg-age'), $('#rg-age').checked ? '' : 'You must be 18 or older to create an account.');
-  if (!focusFirstError(register)) return;
-  const btn = register.querySelector('button[type="submit"]');
-  btn.disabled = true;
-  try {
-    await api('/api/account/register', {
-      method: 'POST',
-      body: { name: $('#rg-name').value, phone: $('#rg-phone').value, password: $('#rg-password').value, terms: $('#rg-terms').checked, age: $('#rg-age').checked }
-    });
-    window.location.href = next;
-  } catch (err) {
-    btn.disabled = false;
-    if (err.data?.fields) { showFieldErrors(err.data.fields, 'rg'); focusFirstError(register); }
-    else showAlert(alertBox, 'error', 'Your account was not created.', err.message);
-  }
+  register.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    alertBox.innerHTML = '';
+    const visible = Object.keys(checks).filter((id) => !$(`#${id}`).closest('[hidden]'));
+    for (const id of visible) setError($(`#${id}`), checks[id]($(`#${id}`).value));
+    setError($('#rg-terms'), $('#rg-terms').checked ? '' : 'Accept the Terms of service and Privacy policy to continue.');
+    setError($('#rg-age'), $('#rg-age').checked ? '' : 'You must be 18 or older.');
+    if (!focusFirstError(register)) return;
+    const btn = $('#register-submit');
+    btn.disabled = true;
+    const body = { role, name: $('#rg-name').value, phone: $('#rg-phone').value, password: $('#rg-password').value, terms: true, age: true };
+    if (role === 'rider') body.vehicle = $('#rg-vehicle').value;
+    if (role === 'store') Object.assign(body, { storeName: $('#rg-storeName').value, storeStreet: $('#rg-storeStreet').value, storePincode: $('#rg-storePincode').value });
+    try {
+      const res = await api('/api/auth/register', { method: 'POST', body });
+      go(res.home);
+    } catch (err) {
+      btn.disabled = false;
+      if (err.data?.fields) {
+        for (const [k, msg] of Object.entries(err.data.fields)) { const el = $(`#rg-${k}`); if (el) setError(el, msg); }
+        focusFirstError(register);
+      } else showAlert(alertBox, 'error', 'Your account was not created.', err.message);
+    }
+  });
 });
 
-// Already signed in: say so instead of showing an empty form.
-api('/api/account/me').then((me) => {
-  alertBox.innerHTML = `<div class="notice notice-success"><strong>You are signed in as ${esc(me.name)}.</strong><p><a href="/account">Go to your account</a></p></div>`;
-}).catch(() => {});
+render();

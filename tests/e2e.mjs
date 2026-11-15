@@ -1,4 +1,6 @@
 // End-to-end check in a real headless Chrome, driven over the DevTools protocol (no extra packages).
+// The browser plays one role at a time; the other roles act through the API at the same moment,
+// so live updates between customer, store partner, delivery partner and admin are exercised.
 // Run: node tests/e2e.mjs [path-to-chrome]
 import fs from 'node:fs';
 import os from 'node:os';
@@ -16,14 +18,21 @@ const app = createApp({ dataDir, env: { ADMIN_PASSWORD: 'e2e-admin-password' }, 
 await new Promise((r) => app.server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${app.server.address().port}`;
 
+// API actors with their own cookie jars.
+const jar = {};
+const as = async (who, p, body) => {
+  const res = await fetch(base + p, { method: body ? 'POST' : 'GET', headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(jar[who] ? { Cookie: jar[who] } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  const sc = res.headers.get('set-cookie'); if (sc) jar[who] = sc.split(';')[0];
+  return res.json().catch(() => null);
+};
+const register = (who, role, phone, extra = {}) => as(who, '/api/auth/register', { role, name: extra.name || 'Test Person', phone, password: 'password-123', terms: true, age: true, ...extra });
+
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'pmart-chrome-'));
 const port = 9300 + Math.floor(Math.random() * 90);
 const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--window-size=1280,900', 'about:blank'], { stdio: 'ignore' });
-
 let version;
 for (let i = 0; i < 50 && !version; i++) { try { version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json(); } catch { await sleep(200); } }
 const target = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })).json();
-
 const ws = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((r) => ws.addEventListener('open', r));
 let seq = 0; const pending = new Map(); const errors = [];
@@ -44,154 +53,168 @@ const evaluate = async (expr) => {
   return r.result.value;
 };
 const go = async (url) => { await send('Page.navigate', { url: base + url }); await sleep(900); };
-const waitFor = async (expr, ms = 5000) => {
+const waitFor = async (expr, ms = 6000) => {
   const until = Date.now() + ms;
-  while (Date.now() < until) { if (await evaluate(`return !!(${expr});`)) return true; await sleep(150); }
+  while (Date.now() < until) { try { if (await evaluate(`return !!(${expr});`)) return true; } catch { /* page loading */ } await sleep(150); }
   return false;
+};
+const fill = (pairs) => evaluate(`for (const [id, v] of ${JSON.stringify(Object.entries(pairs))}) { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); }`);
+const click = (sel) => evaluate(`document.querySelector(${JSON.stringify(sel)}).click();`);
+const signOut = async () => { await evaluate("await fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });"); };
+const signIn = async (role, phone) => {
+  await go(`/login${role === 'customer' ? '' : `?role=${role}`}`);
+  await fill({ 'si-phone': phone, 'si-password': 'password-123' });
+  await evaluate("document.getElementById('signin-form').requestSubmit();");
 };
 
 try {
   await send('Runtime.enable'); await send('Page.enable'); await send('Log.enable');
   await send('Browser.grantPermissions', { origin: base, permissions: ['geolocation'] });
-  await send('Emulation.setGeolocationOverride', { latitude: 26.1406, longitude: 91.7898, accuracy: 20 }); // Dispur, Guwahati
+  await send('Emulation.setGeolocationOverride', { latitude: 26.1406, longitude: 91.7898, accuracy: 20 });
 
-  // Home: banner, keyboard, area check.
+  // Partners and admin set up through the API.
+  await register('storeA', 'store', '9000000001', { name: 'Ankur Das', storeName: 'Zoo Road Store', storeStreet: 'Zoo Road, Tarun Nagar', storePincode: '781005' });
+  await register('rider1', 'rider', '9100000001', { name: 'Bikash Kalita', vehicle: 'scooter' });
+  await as('admin', '/api/admin/login', { password: 'e2e-admin-password' });
+  for (const u of await as('admin', '/api/admin/users?role=pending')) await as('admin', `/api/admin/users/${u.id}/status`, { status: 'active' });
+  await as('storeA', '/api/store/online', { online: true });
+  await as('rider1', '/api/rider/online', { online: true });
+
+  // ---------- login screen ----------
   await go('/');
-  check('cookie banner shows on first visit', await evaluate(`return !document.getElementById('cookie-banner').hidden;`));
+  check('opening the site lands on sign in', await evaluate("return location.pathname === '/login';"));
+  check('shop is not reachable without signing in', await evaluate("const r = await fetch('/shop', { redirect: 'manual' }); return r.type === 'opaqueredirect' || r.status === 302;"));
+  check('split screen shows real product photos', await evaluate("return document.querySelectorAll('.auth-collage img').length >= 6 && [...document.querySelectorAll('.auth-collage img')].every(i => i.complete && i.naturalWidth > 0);"));
+  check('cookie banner shows on first visit', await evaluate("return !document.getElementById('cookie-banner').hidden;"));
   await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
   await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
-  check('first Tab reaches the skip link', await evaluate(`return document.activeElement.classList.contains('skip-link');`));
-  await evaluate(`document.querySelector('[data-consent="necessary"]').click();`);
-  check('banner closes and choice is stored', await evaluate(`return document.getElementById('cookie-banner').hidden && JSON.parse(localStorage.pm_consent).preferences === false;`));
+  check('first Tab reaches the skip link', await evaluate("return document.activeElement.classList.contains('skip-link');"));
+  await click('[data-consent="necessary"]');
+  await evaluate("const t = document.getElementById('tab-customer'); t.focus(); t.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));");
+  check('arrow keys move between role tabs', await evaluate("return document.activeElement.id === 'tab-rider' && document.getElementById('tab-rider').getAttribute('aria-selected') === 'true';"));
+  await click('#tab-store'); await click('[data-mode="register"]');
+  check('store sign-up shows store fields', await evaluate("return !document.querySelector('[data-for=\"store\"]').hidden && document.querySelector('[data-for=\"rider\"]').hidden;"));
+  await click('#tab-customer');
+  await evaluate("document.getElementById('register-form').requestSubmit();");
+  check('empty sign-up shows inline errors with aria wiring', await evaluate("const i = document.getElementById('rg-phone'); return document.querySelectorAll('#register-form [aria-invalid=\"true\"]').length === 5 && i.getAttribute('aria-describedby').includes('rg-phone-error');"));
+  await fill({ 'rg-name': 'Anjali Das', 'rg-phone': '9864012345', 'rg-password': 'password-123' });
+  await click('#rg-terms'); await click('#rg-age');
+  await evaluate("document.getElementById('register-form').requestSubmit();");
+  check('customer sign-up lands in the shop', await waitFor("location.pathname === '/shop' && document.querySelectorAll('#products .product').length > 20"));
 
-  await evaluate(`const i=document.getElementById('pincode'); i.value='12'; document.getElementById('area-form').requestSubmit();`);
-  check('invalid pincode shows inline error with aria wiring', await evaluate(`const i=document.getElementById('pincode'); return i.getAttribute('aria-invalid')==='true' && i.getAttribute('aria-describedby').includes('pincode-error') && !document.getElementById('pincode-error').hidden;`));
-  await evaluate(`const i=document.getElementById('pincode'); i.value='781005'; i.dispatchEvent(new Event('input')); document.getElementById('area-form').requestSubmit();`);
-  check('Guwahati pincode is accepted', await waitFor(`document.getElementById('area-result').textContent.includes('we deliver to 781005')`));
-  await evaluate(`const i=document.getElementById('pincode'); i.value='110001'; document.getElementById('area-form').requestSubmit();`);
-  check('Delhi pincode is refused', await waitFor(`document.getElementById('area-result').textContent.includes('do not deliver to 110001')`));
-  await evaluate(`document.getElementById('use-location').click();`);
-  check('device location inside Guwahati is recognised', await waitFor(`document.getElementById('area-result').textContent.includes('inside our delivery area')`));
-  check('CTA labels are identical', await evaluate(`return [...document.querySelectorAll('.btn-primary')].every(b => b.textContent.trim()==='Check my area');`));
+  // ---------- shop ----------
+  check('every product card shows a loaded photo', await waitFor("[...document.querySelectorAll('#products img')].slice(0, 12).every(i => i.complete && i.naturalWidth > 0)"));
+  check('category tiles have photos', await evaluate("return document.querySelectorAll('#categories img').length === 6;"));
+  await click('[data-id="amul-butter-100g"] [data-action="add"]');
+  await click('[data-id="amul-butter-100g"] [data-action="inc"]');
+  await click('[data-id="tata-tea-gold-500g"] [data-action="add"]');
+  check('cart button shows items and total', await waitFor("document.querySelector('[data-cart-summary]').textContent === '3 items, ₹424'"));
+  check('focus stays on the stepper', await evaluate("return document.activeElement.dataset.action === 'inc';"));
+  await fill({ q: 'parle' });
+  check('header search filters live', await evaluate("return document.querySelectorAll('#products .product').length === 1;"));
+  await fill({ q: '' });
+  await waitFor("document.getElementById('live-state').dataset.state === 'live'");
+  await as('storeA', '/api/store/stock', { stock: { 'parle-g-250g': 0 } });
+  check('stock change from the store reaches the shop live', await waitFor("document.querySelector('[data-id=\"parle-g-250g\"] .badge-out')"));
+  await as('storeA', '/api/store/stock', { stock: { 'parle-g-250g': 40 } });
+  await click('[data-cart-link]');
+  check('cart drawer shows photos and free delivery', await waitFor("document.getElementById('cart').open && document.querySelectorAll('#cart-lines img').length === 2 && document.getElementById('cart-summary').textContent.includes('Free')"));
+  await evaluate("document.getElementById('cart').close();");
 
-  // Shop: add items, live stock.
-  await go('/shop');
-  check('products render', await waitFor(`document.querySelectorAll('#products .product').length > 20`));
-  await evaluate(`const add=id=>document.querySelector('[data-id="'+id+'"] [data-action="add"]').click(); add('amul-butter-100g'); document.querySelector('[data-id="amul-butter-100g"] [data-action="inc"]').click(); add('tata-tea-gold-500g');`);
-  check('cart count updates and is announced in the link label', await evaluate(`return document.querySelector('[data-cart-count]').textContent==='3' && document.querySelector('[data-cart-link]').getAttribute('aria-label')==='Cart, 3 items';`));
-  check('focus stays on the stepper after adding', await evaluate(`return document.activeElement.dataset.action==='inc';`));
-  await evaluate(`document.querySelector('[data-cart-link]').click();`);
-  check('cart drawer opens with free delivery over the threshold', await waitFor(`document.getElementById('cart').open && document.getElementById('cart-summary').textContent.includes('Free') && document.getElementById('cart-summary').textContent.includes('424')`));
-  await evaluate(`document.getElementById('cart').close();`);
-  check('search filters products', await evaluate(`const s=document.getElementById('search'); s.value='parle'; s.dispatchEvent(new Event('input')); return document.querySelectorAll('#products .product').length===1;`));
-
-  // Live stock: change stock from the admin API while the shop is open.
-  await waitFor(`document.getElementById('live-state').dataset.state==='live'`);
-  const login = await fetch(`${base}/api/admin/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: 'e2e-admin-password' }) });
-  const adminCookie = login.headers.get('set-cookie').split(';')[0];
-  const adminPost = (p, body) => fetch(base + p, { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: adminCookie }, body: JSON.stringify(body) }).then((r) => r.json());
-  await adminPost('/api/admin/products/parle-g-250g', { stock: 0 });
-  check('stock change reaches the open shop page live', await waitFor(`document.querySelector('[data-id="parle-g-250g"] .stock-out')`));
-  await adminPost('/api/admin/products/parle-g-250g', { stock: 70 });
-
-  // Checkout.
+  // ---------- checkout ----------
   await go('/checkout');
-  await waitFor(`document.getElementById('summary-totals').textContent.includes('424')`);
-  await evaluate(`document.getElementById('step-1').requestSubmit();`);
-  check('empty address shows five inline errors and focuses the first', await evaluate(`return document.querySelectorAll('#step-1 [aria-invalid="true"]').length===5 && document.activeElement.id==='name';`), 'landmark is optional');
-  await evaluate(`const set=(id,v)=>{const e=document.getElementById(id); e.value=v; e.dispatchEvent(new Event('input'));};
-    set('name','Anjali Das'); set('phone','9864012345'); set('house','Flat 3B'); set('street','GS Road, Christian Basti'); set('pincode','781005');
-    document.getElementById('step-1').requestSubmit();`);
-  check('step 2 opens and step 1 is marked done', await waitFor(`!document.getElementById('step-2').hidden && document.querySelector('#steps li[data-step="1"]').dataset.state==='done' && document.querySelector('#steps li[data-step="2"]').getAttribute('aria-current')==='step'`));
-  check('consent boxes start unticked', await evaluate(`return !document.getElementById('terms').checked && !document.getElementById('age').checked && !document.getElementById('marketing').checked && !document.querySelector('input[name=payment]:checked');`));
-  await evaluate(`document.getElementById('step-2').requestSubmit();`);
-  check('terms, age and payment are required', await evaluate(`return !document.getElementById('terms-error').hidden && !document.getElementById('age-error').hidden && !document.getElementById('payment-error').hidden;`));
-  check('place order button states the full amount', await evaluate(`return document.getElementById('place-order').textContent.includes('424');`));
-  await evaluate(`document.querySelector('input[name=payment][value=upi_on_delivery]').click(); document.getElementById('terms').click(); document.getElementById('age').click(); document.getElementById('step-2').requestSubmit();`);
-  check('order is placed and confirmation shows', await waitFor(`!document.getElementById('step-3').hidden && document.getElementById('confirmation').textContent.includes('is placed')`));
-  const trackHref = await evaluate(`return document.querySelector('#confirmation a').getAttribute('href');`);
-  check('cart is cleared after ordering', await evaluate(`return JSON.parse(localStorage.pm_cart).length===0;`));
-  const orderId = trackHref.match(/PM[A-Z0-9]{8}/)[0];
+  check('checkout fills the account name and number', await waitFor("document.getElementById('name').value === 'Anjali Das' && document.getElementById('phone').value === '9864012345'"));
+  await evaluate("document.getElementById('step-1').requestSubmit();");
+  check('missing address shows inline errors', await evaluate("return document.querySelectorAll('#step-1 [aria-invalid=\"true\"]').length === 3;"));
+  await fill({ house: 'Flat 3B', street: 'GS Road, Christian Basti', pincode: '781005' });
+  await click('#save-address');
+  await evaluate("document.getElementById('step-1').requestSubmit();");
+  check('step 2 opens with progress updated', await waitFor("!document.getElementById('step-2').hidden && document.querySelector('#steps li[data-step=\"1\"]').dataset.state === 'done'"));
+  await evaluate("document.getElementById('step-2').requestSubmit();");
+  check('payment choice is required', await evaluate("return !document.getElementById('payment-error').hidden;"));
+  await click('input[name=payment][value=cod]');
+  await evaluate("document.getElementById('step-2').requestSubmit();");
+  check('order is placed', await waitFor("!document.getElementById('step-3').hidden"));
+  const trackHref = await evaluate("return document.querySelector('#confirmation a').getAttribute('href');");
+  const orderId = trackHref.split('=')[1];
 
-  // Tracking page with live updates.
+  // ---------- live tracking while the store and rider act ----------
   await go(trackHref);
-  check('tracking page shows the order', await waitFor(`document.getElementById('status-text').textContent==='Order placed'`));
-  await waitFor(`document.getElementById('live-state').dataset.state==='live'`);
-  await adminPost(`/api/admin/orders/${orderId}/status`, { status: 'accepted' });
-  check('status updates live without reload', await waitFor(`document.getElementById('status-text').textContent==='Accepted by the store'`));
-  const rider = await adminPost('/api/admin/riders', { name: 'Bikash Kalita' });
-  await adminPost(`/api/admin/orders/${orderId}/status`, { status: 'packed' });
-  await adminPost(`/api/admin/orders/${orderId}/rider`, { riderId: rider.id });
-  const rl = await fetch(`${base}/api/rider/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: rider.code }) });
-  const riderCookie = rl.headers.get('set-cookie').split(';')[0];
-  const riderPost = (p, body) => fetch(base + p, { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: riderCookie }, body: JSON.stringify(body) });
-  await riderPost(`/api/rider/orders/${orderId}/start`, {});
-  await riderPost(`/api/rider/orders/${orderId}/location`, { lat: 26.1500, lng: 91.7700, accuracy: 10 });
-  check('rider location appears with a show-distance button', await waitFor(`document.getElementById('rider-text').textContent.includes('Bikash') && document.getElementById('distance-btn')`));
-  await evaluate(`document.getElementById('distance-btn').click();`);
-  check('distance computed on device', await waitFor(`/about [0-9.]+ km from you/.test(document.getElementById('rider-text').textContent)`), await evaluate(`return document.getElementById('rider-text').textContent;`));
-  await riderPost(`/api/rider/orders/${orderId}/delivered`, {});
-  check('delivered status arrives live', await waitFor(`document.getElementById('status-text').textContent==='Delivered' && document.getElementById('rider-box').hidden`));
-
-  // Customer account: sign-in page, register, header, checkout prefill, account page.
-  await go('/');
-  check('header has a Sign in link', await evaluate(`return !!document.querySelector('.nav-list a[href="/login"]');`));
-  await go('/login');
-  check('sign-in page offers customer, admin and rider', await evaluate(`return !!document.getElementById('signin-form') && !!document.querySelector('a[href="/admin"]') && !!document.querySelector('a[href="/rider"]');`));
-  await evaluate(`document.querySelector('[data-show="register"]').click();`);
-  check('create-account form opens and takes focus', await evaluate(`return !document.getElementById('register-form').hidden && document.activeElement.id==='rg-name';`));
-  await evaluate(`document.getElementById('register-form').requestSubmit();`);
-  check('empty sign-up shows five inline errors', await evaluate(`return document.querySelectorAll('#register-form [aria-invalid="true"]').length===5;`));
-  await evaluate(`const s=(id,v)=>{const e=document.getElementById(id); e.value=v; e.dispatchEvent(new Event('input'));};
-    s('rg-name','Rina Bora'); s('rg-phone','7896000002'); s('rg-password','good-password-1');
-    document.getElementById('rg-terms').click(); document.getElementById('rg-age').click();
-    document.getElementById('register-form').requestSubmit();`);
-  check('sign-up lands on the account page', await waitFor(`location.pathname==='/account' && document.getElementById('acct-sub').textContent.includes('Rina Bora')`));
-  check('header now shows Account', await evaluate(`return !!document.querySelector('.nav-list a[href="/account"]');`));
-  await evaluate(`const s=(id,v)=>{document.getElementById(id).value=v;}; s('house','House 12'); s('street','Zoo Road, Tarun Nagar'); s('pincode','781005'); document.getElementById('addr-form').requestSubmit();`);
-  check('address saves from the account page', await waitFor(`document.getElementById('acct-alert').textContent.includes('Address saved')`));
+  check('tracking shows the order waiting for the store', await waitFor("document.getElementById('status-text').textContent === 'Order placed' && document.getElementById('status-sub').textContent.includes('store')"));
+  await waitFor("document.getElementById('live-state').dataset.state === 'live'");
+  await as('storeA', `/api/store/orders/${orderId}/accept`, {});
+  check('store acceptance appears live', await waitFor("document.getElementById('status-text').textContent === 'Accepted by the store' && document.getElementById('status-sub').textContent.includes('Zoo Road Store')"));
+  await as('storeA', `/api/store/orders/${orderId}/packed`, {});
+  await as('rider1', `/api/rider/orders/${orderId}/accept`, {});
+  check('delivery partner assignment appears live', await waitFor("document.getElementById('status-text').textContent === 'Delivery partner assigned'"));
+  await as('rider1', `/api/rider/orders/${orderId}/pickup`, {});
+  await as('rider1', `/api/rider/orders/${orderId}/location`, { lat: 26.15, lng: 91.77, accuracy: 10 });
+  check('rider location offers a distance check', await waitFor("document.getElementById('distance-btn')"));
+  await click('#distance-btn');
+  check('distance is computed on the device', await waitFor("/about [0-9.]+ km from you/.test(document.getElementById('rider-text').textContent)"));
+  await as('rider1', `/api/rider/orders/${orderId}/delivered`, {});
+  check('delivered arrives live', await waitFor("document.getElementById('status-card').dataset.status === 'delivered'"));
   await go('/shop');
-  await waitFor(`document.querySelectorAll('#products .product').length > 20`);
-  await evaluate(`document.querySelector('[data-id="tata-salt-1kg"] [data-action="add"]').click();`);
-  await go('/checkout');
-  check('checkout fills in the signed-in customer', await waitFor(`document.getElementById('name').value==='Rina Bora' && document.getElementById('phone').value==='7896000002' && document.getElementById('street').value==='Zoo Road, Tarun Nagar' && !document.getElementById('save-address-row').hidden`));
-  await go('/account');
-  await waitFor(`document.getElementById('acct-sub').textContent.includes('Rina')`);
-  await evaluate(`document.getElementById('signout').click();`);
-  check('sign out returns home with Sign in link', await waitFor(`location.pathname==='/' && document.querySelector('.nav-list a[href="/login"]')`));
-  await go('/login');
-  await evaluate(`document.getElementById('si-phone').value='7896000002'; document.getElementById('si-password').value='wrong-password'; document.getElementById('signin-form').requestSubmit();`);
-  check('wrong password shows an error', await waitFor(`document.getElementById('login-alert').textContent.includes('do not match')`));
-  await evaluate(`document.getElementById('si-password').value='good-password-1'; document.getElementById('signin-form').requestSubmit();`);
-  check('sign in with the right password works', await waitFor(`location.pathname==='/account'`));
-  await evaluate(`await fetch('/api/account/logout',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}); localStorage.pm_cart='[]';`);
+  check('header shows the saved delivery area', await evaluate("return document.querySelector('.location-chip').textContent.includes('781005');"));
+  await signOut();
 
-  // Staff interfaces render.
+  // ---------- store partner interface ----------
+  await register('cust2', 'customer', '7002000001', { name: 'Rina Bora' });
+  await signIn('store', '9000000001');
+  check('store partner lands on the store app', await waitFor("location.pathname === '/store' && !document.getElementById('workspace').hidden"));
+  check('store switch shows accepting orders', await evaluate("return document.getElementById('online-switch').getAttribute('aria-checked') === 'true';"));
+  const two = await as('cust2', '/api/orders', { items: [{ id: 'tata-salt-1kg', qty: 2 }], customer: { name: 'Rina Bora', phone: '7002000001', house: 'H 12', street: 'Zoo Road', landmark: '', pincode: '781005' }, payment: 'upi_on_delivery', consents: {}, expectedTotal: 81 });
+  check('new request appears live with a countdown', await waitFor(`document.querySelector('[data-order="${two.id}"] .countdown p')?.textContent.includes('seconds')`));
+  check('request is announced for screen readers', await evaluate("return document.getElementById('announcer').textContent.includes('New order request');"));
+  await click(`[data-order="${two.id}"] [data-act="accept"]`);
+  check('accepted order moves to To pack', await waitFor(`document.querySelector('#list-pack [data-order="${two.id}"]')`));
+  await click(`#list-pack [data-order="${two.id}"] [data-act="packed"]`);
+  check('packed order waits for pickup', await waitFor(`document.querySelector('#list-hand [data-order="${two.id}"]')`));
+  await click('#tab-stock');
+  check('stock tab lists products with photos', await evaluate("return document.querySelectorAll('#stock-rows tr').length > 20 && document.querySelectorAll('#stock-rows img').length > 20;"));
+  check('accepting took the stock', await evaluate("return document.getElementById('stock-tata-salt-1kg').value === '23';"));
+  await signOut();
+
+  // ---------- delivery partner interface ----------
+  await signIn('rider', '9100000001');
+  check('rider lands on the rider app with the request', await waitFor(`location.pathname === '/rider' && document.querySelector('[data-act="accept"][data-id="${two.id}"]')`));
+  check('request shows pickup store and drop area only', await evaluate("const t = document.getElementById('rider-body').textContent; return t.includes('Zoo Road Store') && t.includes('781005') && !t.includes('H 12');"));
+  await click(`[data-act="accept"][data-id="${two.id}"]`);
+  check('accepted delivery shows the full address and call button', await waitFor("document.getElementById('rider-body').textContent.includes('H 12') && document.querySelector('a[href^=\"tel:\"]')"));
+  check('cannot go offline mid-delivery', await evaluate("return document.getElementById('online-switch').disabled;"));
+  await click('[data-act="pickup"]');
+  check('pickup starts location sharing', await waitFor("/Sharing your location/.test(document.getElementById('share-status')?.textContent || '')"));
+  await click('[data-act="delivered"]');
+  check('delivered returns the rider to waiting', await waitFor("document.getElementById('rider-body').textContent.includes('Waiting for a delivery request')"));
+  await signOut();
+
+  // ---------- admin interface ----------
+  await register('newRider', 'rider', '9100000002', { name: 'Pranjal Nath', vehicle: 'bicycle' });
   await go('/admin');
-  await waitFor(`!document.getElementById('login').hidden`);
-  await evaluate(`document.getElementById('password').value='e2e-admin-password'; document.getElementById('login').requestSubmit();`);
-  check('admin dashboard signs in and loads products', await waitFor(`!document.getElementById('dashboard').hidden && document.querySelectorAll('#product-rows tr').length > 20`));
-  await evaluate(`document.getElementById('order-filter').value='all'; document.getElementById('order-filter').dispatchEvent(new Event('change'));`);
-  check('admin sees the delivered order', await waitFor(`document.querySelector('[data-order="${orderId}"]')`));
-  check('arrow keys move between dashboard tabs', await evaluate(`const t=document.getElementById('tab-orders'); t.focus(); t.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true})); return document.activeElement.id==='tab-products' && !document.getElementById('panel-products').hidden;`));
+  await fill({ password: 'e2e-admin-password' });
+  await evaluate("document.getElementById('login').requestSubmit();");
+  check('admin sees live stats', await waitFor("document.querySelectorAll('#stats .stat').length === 8"));
+  check('admin sees the pending partner', await waitFor("document.getElementById('approvals-list').textContent.includes('Pranjal Nath')"));
+  await click('#approvals-list [data-status="active"]');
+  check('admin approves the partner', await waitFor("document.getElementById('approvals-alert').textContent.includes('approved')"));
+  await click('#tab-orders');
+  await fill({ 'order-filter': 'all' });
+  check('admin sees every order with store and rider', await waitFor(`document.querySelector('[data-order="${orderId}"]')?.textContent.includes('Zoo Road Store')`));
+  await click('#tab-stores');
+  check('stores tab lists the store, offline after its owner signed out', await waitFor("document.getElementById('stores-table').textContent.includes('Zoo Road Store') && document.querySelector('#stores-table .tag-offline')"));
+  await click('#tab-catalogue');
+  check('catalogue lists products with photos', await waitFor("document.querySelectorAll('#product-rows img').length > 20"));
 
-  // Data rights.
-  await go('/data-request');
-  await evaluate(`document.getElementById('orderId').value='${orderId}'; document.getElementById('phone').value='9864012345'; document.querySelector('input[name=type][value=delete]').click(); document.getElementById('confirm').click(); document.getElementById('request-form').requestSubmit();`);
-  check('data deletion completes from the page', await waitFor(`document.getElementById('request-alert').textContent.includes('personal data is deleted')`));
-
-  // Policy pages.
-  for (const p of ['/privacy', '/terms', '/refunds', '/cookies', '/contact']) {
+  // ---------- public pages ----------
+  for (const p of ['/privacy', '/terms', '/refunds', '/cookies', '/contact', '/credits', '/data-request']) {
     await go(p);
-    check(`${p} renders an h1`, await evaluate(`return !!document.querySelector('main h1');`));
+    check(`${p} renders`, await evaluate("return !!document.querySelector('main h1');"));
   }
-  await go('/cookies');
-  await evaluate(`document.querySelector('main [data-cookie-settings]').click();`);
-  check('cookie settings reopen from the cookie policy', await evaluate(`return !document.getElementById('cookie-banner').hidden && document.activeElement.dataset.consent==='necessary';`));
-
+  await go('/credits');
+  check('credits list every photo', await evaluate("return document.querySelectorAll('main tbody tr').length === 29;"));
   check('no JavaScript errors in the browser', errors.length === 0, errors.join(' | '));
 } catch (err) {
-  check('e2e run completed', false, err.message);
+  check('e2e run completed', false, err.stack || err.message);
 } finally {
   ws.close();
   chrome.kill();

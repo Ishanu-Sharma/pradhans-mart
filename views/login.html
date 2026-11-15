@@ -1,73 +1,135 @@
-<div class="wrap">
-  <div class="page-head">
-    <h1>Sign in</h1>
-    <p>Choose how you use Pradhan&rsquo;s Mart. Customers can also order without an account.</p>
-  </div>
-</div>
-
-<div class="wrap login-grid">
-  <section class="panel" aria-labelledby="customer-title">
-    <h2 id="customer-title">Customer</h2>
-    <div id="login-alert" role="alert"></div>
-
-    <form id="signin-form" novalidate aria-label="Customer sign in">
-      <div class="field">
-        <label for="si-phone">Mobile number</label>
-        <input class="input" id="si-phone" type="tel" inputmode="tel" autocomplete="username" required>
-        <p class="error" id="si-phone-error" hidden></p>
-      </div>
-      <div class="field">
-        <label for="si-password">Password</label>
-        <input class="input" id="si-password" type="password" autocomplete="current-password" required>
-        <p class="error" id="si-password-error" hidden></p>
-      </div>
-      <button class="btn btn-primary btn-block" type="submit">Sign in</button>
-      <p class="muted small switch-row">New to Pradhan&rsquo;s Mart? <button type="button" class="link-button" data-show="register">Create an account</button></p>
-    </form>
-
-    <form id="register-form" novalidate aria-label="Create a customer account" hidden>
-      <div class="field">
-        <label for="rg-name">Full name</label>
-        <input class="input" id="rg-name" autocomplete="name" required>
-        <p class="error" id="rg-name-error" hidden></p>
-      </div>
-      <div class="field">
-        <label for="rg-phone">Mobile number</label>
-        <span class="hint" id="rg-phone-hint">You sign in with this number.</span>
-        <input class="input" id="rg-phone" type="tel" inputmode="tel" autocomplete="username" aria-describedby="rg-phone-hint" required>
-        <p class="error" id="rg-phone-error" hidden></p>
-      </div>
-      <div class="field">
-        <label for="rg-password">Password</label>
-        <span class="hint" id="rg-password-hint">At least 8 characters.</span>
-        <input class="input" id="rg-password" type="password" autocomplete="new-password" aria-describedby="rg-password-hint" required>
-        <p class="error" id="rg-password-error" hidden></p>
-      </div>
-      <div class="check">
-        <input type="checkbox" id="rg-terms" required>
-        <label for="rg-terms">I accept the <a href="/terms" target="_blank" rel="noopener">Terms of service</a> and have read the <a href="/privacy" target="_blank" rel="noopener">Privacy policy</a>.</label>
-      </div>
-      <p class="error" id="rg-terms-error" hidden></p>
-      <div class="check">
-        <input type="checkbox" id="rg-age" required>
-        <label for="rg-age">I am 18 years old or older.</label>
-      </div>
-      <p class="error" id="rg-age-error" hidden></p>
-      <button class="btn btn-primary btn-block" type="submit">Create account</button>
-      <p class="muted small switch-row">Already have an account? <button type="button" class="link-button" data-show="signin">Sign in</button></p>
-    </form>
+<div class="auth-layout">
+  <section class="auth-brand" aria-labelledby="brand-title">
+    <span class="brand">
+      <svg class="brand-mark" aria-hidden="true" focusable="false" viewBox="0 0 32 32"><use href="/assets/icons.svg#mark"></use></svg>
+      <span class="brand-name">{{biz.brandName}}</span>
+    </span>
+    <h1 id="brand-title">Groceries from Indian brands, delivered across Guwahati</h1>
+    <p class="auth-lead">Milk, atta, dal, tea, snacks and household goods from brands founded and owned in India.</p>
+    <ul class="auth-collage" aria-hidden="true">{{{collage}}}</ul>
+    <ul class="auth-facts">
+      <li><span class="tick"><svg aria-hidden="true" focusable="false"><use href="/assets/icons.svg#check"></use></svg></span>Pay on delivery, by cash or UPI</li>
+      <li><span class="tick"><svg aria-hidden="true" focusable="false"><use href="/assets/icons.svg#check"></use></svg></span>Delivery &#8377;{{deliveryFee}}, free from &#8377;{{freeDeliveryFrom}}. No other charges.</li>
+      <li><span class="tick"><svg aria-hidden="true" focusable="false"><use href="/assets/icons.svg#check"></use></svg></span>Pincodes {{pincodeFirst}} to {{pincodeLast}}, Guwahati</li>
+    </ul>
   </section>
 
-  <div class="role-cards">
-    <section class="panel" aria-labelledby="admin-title">
-      <h2 id="admin-title">Store admin</h2>
-      <p class="muted">Accept and pack orders, assign riders, and update prices and stock.</p>
-      <a class="btn btn-secondary btn-block" href="/admin">Open the store dashboard</a>
-    </section>
-    <section class="panel" aria-labelledby="rider-title">
-      <h2 id="rider-title">Rider</h2>
-      <p class="muted">See your deliveries and share your location while you deliver. Sign in with the code the store gave you.</p>
-      <a class="btn btn-secondary btn-block" href="/rider">Open the rider app</a>
-    </section>
-  </div>
+  <main id="main" class="auth-main" tabindex="-1">
+    <div class="auth-card">
+      <h2 id="auth-title">Sign in to continue</h2>
+      <p id="auth-sub">Choose who you are, then sign in or create an account.</p>
+
+      <div class="role-tabs" role="tablist" aria-label="I am a">
+        <button type="button" role="tab" class="role-tab" id="tab-customer" aria-selected="true" aria-controls="auth-panel" data-role="customer">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#cart"></use></svg>Customer
+        </button>
+        <button type="button" role="tab" class="role-tab" id="tab-rider" aria-selected="false" aria-controls="auth-panel" data-role="rider" tabindex="-1">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#scooter"></use></svg>Delivery partner
+        </button>
+        <button type="button" role="tab" class="role-tab" id="tab-store" aria-selected="false" aria-controls="auth-panel" data-role="store" tabindex="-1">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#store"></use></svg>Store partner
+        </button>
+      </div>
+
+      <div id="auth-panel" role="tabpanel" aria-labelledby="tab-customer">
+        <p class="role-note" id="role-note">Order groceries for delivery in Guwahati.</p>
+        <div id="login-alert" role="alert"></div>
+
+        <form id="signin-form" novalidate aria-label="Sign in">
+          <div class="field">
+            <label for="si-phone">Mobile number</label>
+            <input class="input" id="si-phone" type="tel" inputmode="tel" autocomplete="username" required>
+            <p class="error" id="si-phone-error" hidden></p>
+          </div>
+          <div class="field">
+            <label for="si-password">Password</label>
+            <input class="input" id="si-password" type="password" autocomplete="current-password" required>
+            <p class="error" id="si-password-error" hidden></p>
+          </div>
+          <button class="btn btn-primary btn-block" type="submit" id="signin-submit">Sign in</button>
+          <p class="switch-row"><span id="new-text">New to Pradhan&rsquo;s Mart?</span> <button type="button" class="link-button" data-mode="register">Create an account</button></p>
+        </form>
+
+        <form id="register-form" novalidate aria-label="Create an account" hidden>
+          <div class="field">
+            <label for="rg-name">Full name</label>
+            <input class="input" id="rg-name" autocomplete="name" required>
+            <p class="error" id="rg-name-error" hidden></p>
+          </div>
+          <div class="field">
+            <label for="rg-phone">Mobile number</label>
+            <span class="hint" id="rg-phone-hint">You sign in with this number.</span>
+            <input class="input" id="rg-phone" type="tel" inputmode="tel" autocomplete="username" aria-describedby="rg-phone-hint" required>
+            <p class="error" id="rg-phone-error" hidden></p>
+          </div>
+          <div class="field">
+            <label for="rg-password">Password</label>
+            <span class="hint" id="rg-password-hint">At least 8 characters.</span>
+            <input class="input" id="rg-password" type="password" autocomplete="new-password" aria-describedby="rg-password-hint" required>
+            <p class="error" id="rg-password-error" hidden></p>
+          </div>
+
+          <div data-for="rider" hidden>
+            <div class="field">
+              <label for="rg-vehicle">Vehicle</label>
+              <select class="input" id="rg-vehicle">
+                <option value="">Choose your vehicle</option>
+                <option value="bicycle">Bicycle</option>
+                <option value="scooter">Scooter</option>
+                <option value="motorcycle">Motorcycle</option>
+              </select>
+              <p class="error" id="rg-vehicle-error" hidden></p>
+            </div>
+          </div>
+
+          <div data-for="store" hidden>
+            <div class="field">
+              <label for="rg-storeName">Store name</label>
+              <input class="input" id="rg-storeName" autocomplete="organization">
+              <p class="error" id="rg-storeName-error" hidden></p>
+            </div>
+            <div class="form-row two">
+              <div class="field">
+                <label for="rg-storeStreet">Street and locality</label>
+                <input class="input" id="rg-storeStreet" autocomplete="street-address">
+                <p class="error" id="rg-storeStreet-error" hidden></p>
+              </div>
+              <div class="field">
+                <label for="rg-storePincode">Pincode</label>
+                <input class="input" id="rg-storePincode" inputmode="numeric" maxlength="6" autocomplete="postal-code">
+                <p class="error" id="rg-storePincode-error" hidden></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="check">
+            <input type="checkbox" id="rg-terms" required>
+            <label for="rg-terms">I accept the <a href="/terms" target="_blank" rel="noopener">Terms of service</a> and have read the <a href="/privacy" target="_blank" rel="noopener">Privacy policy</a>.</label>
+          </div>
+          <p class="error" id="rg-terms-error" hidden></p>
+          <div class="check">
+            <input type="checkbox" id="rg-age" required>
+            <label for="rg-age">I am 18 years old or older.</label>
+          </div>
+          <p class="error" id="rg-age-error" hidden></p>
+          <p class="notice notice-info small" data-for="partner" hidden>Partner accounts start working once our admin team approves them.</p>
+          <button class="btn btn-primary btn-block" type="submit" id="register-submit">Create account</button>
+          <p class="switch-row">Already have an account? <button type="button" class="link-button" data-mode="signin">Sign in</button></p>
+        </form>
+      </div>
+    </div>
+
+    <div class="auth-foot">
+      <a class="auth-admin" href="/admin"><svg class="icon" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#shield"></use></svg>Admin sign in</a>
+      <nav aria-label="Policies">
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+        <a href="/refunds">Refunds</a>
+        <a href="/cookies">Cookies</a>
+        <a href="/contact">Contact</a>
+        <a href="/data-request">Your data</a>
+        <a href="/credits">Photo credits</a>
+      </nav>
+    </div>
+  </main>
 </div>

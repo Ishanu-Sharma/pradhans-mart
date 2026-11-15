@@ -1,4 +1,4 @@
-// Shared browser code: storage, cart, cookie consent, form validation, API calls.
+// Shared browser code: storage, cart, cookie consent, form validation, API calls, live updates.
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -9,6 +9,9 @@ const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR',
 export const money = (n) => inr.format(n);
 
 export const icon = (name, cls = 'icon') => `<svg class="${cls}" aria-hidden="true" focusable="false"><use href="/assets/icons.svg#${name}"></use></svg>`;
+export const productImage = (p, size = 160) => (p.image
+  ? `<img src="${esc(p.image)}" alt="" width="${size}" height="${size}" loading="lazy" decoding="async">`
+  : icon(`cat-${p.category}`, 'placeholder'));
 
 // Storage can be unavailable (private windows, blocked site data). Never let that break the page.
 export const storage = {
@@ -96,33 +99,23 @@ export const cart = {
   changed() { updateCartLink(); for (const fn of listeners) fn(); }
 };
 
-function updateCartLink() {
+export function updateCartLink(totalText) {
   const n = cart.count();
-  for (const el of $$('[data-cart-count]')) {
-    el.textContent = String(n);
-    if (n === 0) el.setAttribute('data-empty', ''); else el.removeAttribute('data-empty');
+  const count = `${n} ${n === 1 ? 'item' : 'items'}`;
+  const words = n === 0 ? 'My cart' : `${count}${totalText ? `, ${totalText}` : ''}`;
+  for (const el of $$('[data-cart-summary]')) {
+    el.innerHTML = n === 0 ? 'My cart' : `${esc(count)}${totalText ? `<span class="cart-total">, ${esc(totalText)}</span>` : ''}`;
   }
-  for (const link of $$('[data-cart-link]')) link.setAttribute('aria-label', `Cart, ${n} ${n === 1 ? 'item' : 'items'}`);
+  for (const link of $$('[data-cart-link]')) {
+    link.setAttribute('aria-label', n === 0 ? 'Cart, empty' : `Cart, ${words}`);
+    link.toggleAttribute('data-empty', n === 0);
+  }
 }
-
-// Other tabs changing the cart.
 window.addEventListener('storage', (e) => { if (e.key === 'pm_cart') cart.changed(); });
 
-// ---------- orders saved on this device ----------
-const ORDER_KEEP_DAYS = 30;
+// ---------- orders saved on this device (data-request page) ----------
 export const deviceOrders = {
-  list() {
-    const cutoff = Date.now() - ORDER_KEEP_DAYS * 86_400_000;
-    const all = storage.get('pm_orders', []);
-    const kept = Array.isArray(all) ? all.filter((o) => o && o.id && o.token && Date.parse(o.at) > cutoff) : [];
-    if (Array.isArray(all) && kept.length !== all.length) storage.set('pm_orders', kept);
-    return kept;
-  },
-  add(id, token) {
-    const list = this.list().filter((o) => o.id !== id);
-    list.unshift({ id, token, at: new Date().toISOString() });
-    storage.set('pm_orders', list.slice(0, 20));
-  },
+  list() { const v = storage.get('pm_orders', []); return Array.isArray(v) ? v : []; },
   remove(id) { storage.set('pm_orders', this.list().filter((o) => o.id !== id)); }
 };
 
@@ -151,6 +144,7 @@ export function liveValidate(input, check) {
   let touched = false;
   input.addEventListener('blur', () => { if (String(input.value).trim() !== '' || touched) { touched = true; setError(input, check(input.value)); } });
   input.addEventListener('input', () => { if (touched || input.getAttribute('aria-invalid') === 'true') setError(input, check(input.value)); });
+  input.addEventListener('change', () => { if (input.tagName === 'SELECT') { touched = true; setError(input, check(input.value)); } });
 }
 
 export function focusFirstError(form) {
@@ -165,31 +159,50 @@ export function showAlert(el, kind, title, text) {
 
 // ---------- live connection ----------
 export function liveStream(url, handlers, stateEl) {
-  let es;
   const setState = (live) => {
     if (!stateEl) return;
     stateEl.hidden = false;
     stateEl.dataset.state = live ? 'live' : 'off';
     stateEl.textContent = live ? 'Live' : 'Reconnecting';
   };
-  const open = () => {
-    es = new EventSource(url);
-    es.onopen = () => setState(true);
-    es.onerror = () => setState(false);
-    for (const [event, fn] of Object.entries(handlers)) {
-      es.addEventListener(event, (e) => { try { fn(JSON.parse(e.data)); } catch { /* ignore bad frame */ } });
-    }
-  };
-  open();
-  return { close: () => es && es.close() };
+  const es = new EventSource(url);
+  es.onopen = () => { setState(true); handlers.open?.(); };
+  es.onerror = () => setState(false);
+  for (const [event, fn] of Object.entries(handlers)) {
+    if (event === 'open') continue;
+    es.addEventListener(event, (e) => { try { fn(JSON.parse(e.data)); } catch { /* ignore bad frame */ } });
+  }
+  return { close: () => es.close() };
 }
 
 export function formatTime(iso) {
   return new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit', day: 'numeric', month: 'short' });
 }
 
+// A shrinking bar and a seconds count for an offer that expires.
+export function countdownHtml(expiresAt, totalMs) {
+  return `<div class="countdown" data-expires="${esc(expiresAt)}" data-total="${totalMs}"><div class="countdown-bar"><span></span></div><p></p></div>`;
+}
+export function tickCountdowns(root = document) {
+  for (const el of $$('.countdown', root)) {
+    const left = Math.max(0, Date.parse(el.dataset.expires) - Date.now());
+    const total = Number(el.dataset.total) || 60000;
+    el.querySelector('span').style.width = `${Math.min(100, (left / total) * 100)}%`;
+    el.querySelector('p').textContent = left > 0 ? `${Math.ceil(left / 1000)} seconds to respond` : 'Time is up. Passing to the next partner.';
+  }
+}
+
 let configPromise;
 export const getConfig = () => (configPromise ||= api('/api/config'));
+
+// Sign-out buttons in partner and admin headers.
+for (const btn of $$('[data-logout]')) {
+  btn.addEventListener('click', async () => {
+    const admin = window.location.pathname === '/admin';
+    await api(admin ? '/api/admin/logout' : '/api/auth/logout', { method: 'POST', body: {} }).catch(() => {});
+    window.location.href = admin ? '/admin' : '/login';
+  });
+}
 
 initCookieBanner();
 updateCartLink();

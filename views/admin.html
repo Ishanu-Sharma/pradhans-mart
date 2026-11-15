@@ -1,6 +1,7 @@
-<div class="wrap staff-main">
+<div class="wrap app-main">
   <form id="login" class="panel login-box" novalidate hidden>
-    <h1>Store sign-in</h1>
+    <h1>Admin sign in</h1>
+    <p class="muted">For the Pradhan&rsquo;s Mart platform team.</p>
     <div id="login-alert" role="alert"></div>
     <div class="field">
       <label for="password">Admin password</label>
@@ -8,51 +9,83 @@
       <p class="error" id="password-error" hidden></p>
     </div>
     <button class="btn btn-primary btn-block" type="submit">Sign in</button>
-    <p class="small switch-row"><a href="/login">Other ways to sign in</a></p>
+    <p class="switch-row"><a href="/login">Customer and partner sign in</a></p>
   </form>
 
   <div id="dashboard" hidden>
-    <h1 class="visually-hidden">Store dashboard</h1>
-    <p class="live-dot" id="live-state" data-state="off">Connecting</p>
+    <div class="app-hero">
+      <div>
+        <h1>Platform overview</h1>
+        <p>Live view of orders, stores, delivery partners and customers. <span class="live-dot" id="live-state" data-state="off">Connecting</span></p>
+      </div>
+    </div>
     <p class="visually-hidden" id="announcer" role="status" aria-live="polite"></p>
-    <div class="tabs" role="tablist" aria-label="Dashboard sections">
-      <button role="tab" id="tab-orders" aria-controls="panel-orders" aria-selected="true">Orders</button>
-      <button role="tab" id="tab-products" aria-controls="panel-products" aria-selected="false" tabindex="-1">Products and stock</button>
-      <button role="tab" id="tab-riders" aria-controls="panel-riders" aria-selected="false" tabindex="-1">Riders</button>
+    <div class="stat-row" id="stats"></div>
+
+    <div class="tabs" role="tablist" aria-label="Admin sections">
+      <button role="tab" id="tab-approvals" aria-controls="panel-approvals" aria-selected="true">Approvals <span class="tab-badge" id="pending-badge" hidden>0</span></button>
+      <button role="tab" id="tab-orders" aria-controls="panel-orders" aria-selected="false" tabindex="-1">Orders</button>
+      <button role="tab" id="tab-stores" aria-controls="panel-stores" aria-selected="false" tabindex="-1">Stores</button>
+      <button role="tab" id="tab-riders" aria-controls="panel-riders" aria-selected="false" tabindex="-1">Delivery partners</button>
+      <button role="tab" id="tab-customers" aria-controls="panel-customers" aria-selected="false" tabindex="-1">Customers</button>
+      <button role="tab" id="tab-catalogue" aria-controls="panel-catalogue" aria-selected="false" tabindex="-1">Catalogue</button>
       <button role="tab" id="tab-requests" aria-controls="panel-requests" aria-selected="false" tabindex="-1">Data requests</button>
     </div>
 
-    <section role="tabpanel" id="panel-orders" aria-labelledby="tab-orders" tabindex="0">
-      <div class="kpis" id="order-counts"></div>
-      <div class="field">
-        <label for="order-filter">Show</label>
-        <select class="input" id="order-filter">
-          <option value="active">Orders in progress</option>
-          <option value="all">All orders</option>
-          <option value="done">Delivered and cancelled</option>
-        </select>
+    <section role="tabpanel" id="panel-approvals" aria-labelledby="tab-approvals" tabindex="-1">
+      <div id="approvals-alert" role="status" aria-live="polite"></div>
+      <div id="approvals-list"></div>
+    </section>
+
+    <section role="tabpanel" id="panel-orders" aria-labelledby="tab-orders" tabindex="-1" hidden>
+      <div class="toolbar">
+        <div class="field">
+          <label for="order-filter">Show</label>
+          <select class="input" id="order-filter">
+            <option value="active">Orders in progress</option>
+            <option value="all">All orders</option>
+            <option value="done">Delivered and cancelled</option>
+          </select>
+        </div>
       </div>
       <div id="order-list"></div>
     </section>
 
-    <section role="tabpanel" id="panel-products" aria-labelledby="tab-products" tabindex="0" hidden>
+    <section role="tabpanel" id="panel-stores" aria-labelledby="tab-stores" tabindex="-1" hidden>
+      <div id="stores-alert" role="status" aria-live="polite"></div>
+      <div class="table-scroll" id="stores-table"></div>
+    </section>
+
+    <section role="tabpanel" id="panel-riders" aria-labelledby="tab-riders" tabindex="-1" hidden>
+      <div id="riders-alert" role="status" aria-live="polite"></div>
+      <div class="table-scroll" id="riders-table"></div>
+    </section>
+
+    <section role="tabpanel" id="panel-customers" aria-labelledby="tab-customers" tabindex="-1" hidden>
+      <div id="customers-alert" role="status" aria-live="polite"></div>
+      <div class="table-scroll" id="customers-table"></div>
+    </section>
+
+    <section role="tabpanel" id="panel-catalogue" aria-labelledby="tab-catalogue" tabindex="-1" hidden>
       <div id="products-alert" role="status" aria-live="polite"></div>
-      <div class="table-scroll">
-        <table class="data-table">
-          <caption class="visually-hidden">Products. Edit price, MRP, stock or visibility and press Save on the row.</caption>
-          <thead><tr><th scope="col">Product</th><th scope="col">MRP (&#8377;)</th><th scope="col">Price (&#8377;)</th><th scope="col">Stock</th><th scope="col">On sale</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
-          <tbody id="product-rows"></tbody>
-        </table>
+      <div class="panel">
+        <div class="table-scroll">
+          <table class="data-table">
+            <caption class="visually-hidden">Products. Edit MRP, price or visibility and press Save on the row.</caption>
+            <thead><tr><th scope="col"><span class="visually-hidden">Photo</span></th><th scope="col">Product</th><th scope="col">MRP (&#8377;)</th><th scope="col">Price (&#8377;)</th><th scope="col">On sale</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+            <tbody id="product-rows"></tbody>
+          </table>
+        </div>
       </div>
-      <form id="add-product" class="panel section" novalidate aria-labelledby="add-title">
+      <form id="add-product" class="panel" novalidate aria-labelledby="add-title">
         <h2 id="add-title">Add a product</h2>
+        <p class="muted small">Stores set their own stock for new products. Products added here show a category icon until a licensed photo is added to the catalogue.</p>
         <div class="form-row two">
           <div class="field"><label for="ap-name">Product name</label><input class="input" id="ap-name" required><p class="error" id="ap-name-error" hidden></p></div>
           <div class="field"><label for="ap-brand">Brand</label><input class="input" id="ap-brand" required><p class="error" id="ap-brand-error" hidden></p></div>
           <div class="field"><label for="ap-brandOwner">Brand owner (company)</label><input class="input" id="ap-brandOwner" required><p class="error" id="ap-brandOwner-error" hidden></p></div>
           <div class="field"><label for="ap-category">Category</label><select class="input" id="ap-category" required></select><p class="error" id="ap-category-error" hidden></p></div>
           <div class="field"><label for="ap-netQuantity">Net quantity</label><span class="hint">As printed on the pack, for example 500 g</span><input class="input" id="ap-netQuantity" required><p class="error" id="ap-netQuantity-error" hidden></p></div>
-          <div class="field"><label for="ap-stock">Stock</label><input class="input" id="ap-stock" type="number" min="0" step="1" required><p class="error" id="ap-stock-error" hidden></p></div>
           <div class="field"><label for="ap-mrp">MRP (&#8377;)</label><input class="input" id="ap-mrp" type="number" min="0" step="0.01" required><p class="error" id="ap-mrp-error" hidden></p></div>
           <div class="field"><label for="ap-price">Selling price (&#8377;)</label><span class="hint">Cannot be higher than the MRP</span><input class="input" id="ap-price" type="number" min="0" step="0.01" required><p class="error" id="ap-price-error" hidden></p></div>
         </div>
@@ -66,18 +99,7 @@
       </form>
     </section>
 
-    <section role="tabpanel" id="panel-riders" aria-labelledby="tab-riders" tabindex="0" hidden>
-      <div id="riders-alert" role="status" aria-live="polite"></div>
-      <ul id="rider-list" class="review-lines"></ul>
-      <form id="add-rider" class="panel" novalidate aria-labelledby="ar-title">
-        <h2 id="ar-title">Add a rider</h2>
-        <p class="muted small">The rider signs in at /rider with a code shown once here. Give it to them in person.</p>
-        <div class="field"><label for="ar-name">Rider's full name</label><input class="input" id="ar-name" autocomplete="off" required><p class="error" id="ar-name-error" hidden></p></div>
-        <button class="btn btn-primary" type="submit">Create rider code</button>
-      </form>
-    </section>
-
-    <section role="tabpanel" id="panel-requests" aria-labelledby="tab-requests" tabindex="0" hidden>
+    <section role="tabpanel" id="panel-requests" aria-labelledby="tab-requests" tabindex="-1" hidden>
       <div id="requests-body"></div>
     </section>
   </div>

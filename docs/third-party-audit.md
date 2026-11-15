@@ -1,6 +1,6 @@
 # Third-party SDK and asset audit
 
-Audited 15 November 2026.
+Audited 15 November 2026, updated the same day for photos and the typeface.
 
 ## Result: no third-party code or assets
 
@@ -10,8 +10,8 @@ Audited 15 November 2026.
 | Browser scripts | Only files in `public/assets/js`, all written for this project. |
 | Analytics, ads, pixels, tag managers | None. |
 | Maps and geocoding | None. Area checks use our own pincode list and distance maths. Rider distance is computed on the customer's device. |
-| Fonts | None shipped. The system font stack uses fonts already installed on the visitor's device, so no font licence is needed. |
-| Images | No photographs. The logo, favicon, app icons and line icons are drawn in this project (`public/assets/icons.svg`, `scripts/make-icons.js`). |
+| Fonts | Figtree (SIL Open Font License 1.1), self-hosted from `public/assets/fonts` with its licence file. No font service is contacted. |
+| Images | Product photos from Open Food Facts, Open Beauty Facts and Open Products Facts contributors (CC BY-SA 3.0), resized and self-hosted in `public/assets/products`, credited per product on `/credits`. The logo, favicon and icons are drawn in this project. |
 | Payments | None online. Cash or UPI is paid to the rider. |
 | Email | No provider connected yet. See the README. |
 

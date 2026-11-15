@@ -4,19 +4,26 @@ Grocery delivery from Indian brands, for Guwahati only. One Node.js app, no thir
 
 ## Interfaces
 
+Everything except the policy pages needs a sign-in. The site opens on `/login`.
+
 | URL | Who | What |
 |---|---|---|
-| `/` | Customers | Offer, pincode or location check, benefits, FAQ |
-| `/shop` | Customers | Catalogue with live stock, search, categories, cart |
-| `/checkout` | Customers | Three steps: address, review and pay, confirmation |
-| `/order` | Customers | Live order status, rider distance, cancel |
-| `/data-request` | Customers | Download or delete personal data |
-| `/unsubscribe` | Customers | One-click unsubscribe from offer emails |
-| `/privacy` `/terms` `/refunds` `/cookies` `/contact` | Everyone | Policies and business details |
-| `/admin` | Store staff | Live orders, status, riders, products, stock, data requests |
-| `/rider` | Riders | Assigned deliveries, live location sharing, mark delivered |
+| `/login` | Everyone | Split-screen sign in and sign up, with Customer, Delivery partner and Store partner tabs |
+| `/shop`, `/checkout`, `/order`, `/account` | Customers | Catalogue with real photos and live stock, three-step checkout, live tracking, saved address, delete account |
+| `/store` | Store partners | Accept or decline order requests (60 s each), pack orders, set stock, go online or offline |
+| `/rider` | Delivery partners | Go online, accept or decline delivery requests (45 s each), pick up, deliver, share location while out |
+| `/admin` | Admin (password) | Live overview, approve or reject partners, suspend accounts, all orders with cancel, catalogue, data requests |
+| `/privacy` `/terms` `/refunds` `/cookies` `/contact` `/credits` `/data-request` `/unsubscribe` | Anyone | Policies, credits and data rights, open without signing in |
 
-Real-time data uses server-sent events: stock in the shop, order status and rider location on the tracking page, new orders on the dashboard, new assignments on the rider app.
+### How orders are dispatched
+
+1. A customer places an order. It is offered to one open store at a time: a store in the customer's pincode first, then the store with the fewest orders in hand, and only stores that have every item in stock.
+2. The store has 60 seconds to accept. Declining or not answering passes it to the next store; once every store has had a turn, the round starts again. With no open store for 10 minutes, the order is cancelled and the customer is told.
+3. Accepting takes the items out of that store's stock. The store packs and marks the order packed.
+4. The order is then offered to the online delivery partner who has been free the longest, with 45 seconds to accept, the same way.
+5. The partner sees only the store and the drop street and pincode until they accept. After pickup, their location is shared live with that customer and is never saved.
+
+Riders and store partners sign up from the login page and start work after the admin approves them. An approved store starts with the catalogue's opening stock, which it can change.
 
 ## Run locally
 

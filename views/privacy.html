@@ -30,12 +30,15 @@
     <table>
       <thead><tr><th scope="col">Data</th><th scope="col">Why we need it</th><th scope="col">How long we keep it</th></tr></thead>
       <tbody>
-        <tr><td>Name, mobile number</td><td>To deliver your order and let the rider call you. You give it to us for this purpose, which the DPDP Act allows (section 7(a)).</td><td>With the order record until you ask us to delete it.</td></tr>
+        <tr><td>Name, mobile number</td><td>To deliver your order and let the delivery partner call you. You give it to us for this purpose, which the DPDP Act allows (section 7(a)).</td><td>With the order record until you ask us to delete it.</td></tr>
         <tr><td>Delivery address and pincode</td><td>To deliver your order and confirm the address is inside our delivery area.</td><td>Deleted automatically {{addressDays}} days after the order is delivered or cancelled.</td></tr>
-        <tr><td>Your location at checkout (optional)</td><td>Only if you tick the box, to help the rider find you.</td><td>Deleted with the address, {{addressDays}} days after delivery or cancellation.</td></tr>
+        <tr><td>Your location at checkout (optional)</td><td>Only if you tick the box, to help the delivery partner find you.</td><td>Deleted with the address, {{addressDays}} days after delivery or cancellation.</td></tr>
         <tr><td>Order contents, amounts, payment method (cash or UPI), dates</td><td>To fulfil the order, handle refunds and keep the tax records GST law requires.</td><td>For as long as GST law requires, currently 72 months from the due date of the annual return for that year. After you ask us to delete your data, these records are kept without your name, number or address.</td></tr>
         <tr><td>Your confirmation that you accept our terms and are 18 or older, with the date</td><td>To show that you agreed when you placed the order.</td><td>With the order record.</td></tr>
-        <tr><td>Account (optional): name, mobile number, password, saved address</td><td>Only if you create an account, so you can sign in, see your orders and fill in checkout faster. Your password is stored only as a one-way scrambled hash, so nobody at the store can read it. The address is saved only when you choose to save it.</td><td>Until you delete your account from the account page, or ask us to delete your data.</td></tr>
+        <tr><td>Customer account: name, mobile number, password, saved address (optional)</td><td>You need an account to order, so you can sign in and see your orders. Your password is stored only as a one-way scrambled hash, so nobody can read it. The address is saved only when you choose to save it.</td><td>Until you delete your account from the account page, or ask us to delete your data.</td></tr>
+        <tr><td>Delivery partner account: name, mobile number, password, vehicle type, whether you are online</td><td>To check and approve you, offer you deliveries while you are online, and record which deliveries you made.</td><td>While you work with us. Ask us to delete it when you stop.</td></tr>
+        <tr><td>Delivery partner location</td><td>Only while you are out for delivery, so that customer can see how far away you are.</td><td>Never saved. Held in memory and dropped when the order is delivered.</td></tr>
+        <tr><td>Store partner account: owner name, mobile number, password, store name and address, stock counts</td><td>To check and approve the store, send it orders, and show customers what is in stock.</td><td>While the store works with us. Ask us to delete it when you stop.</td></tr>
         <tr><td>Email address (optional)</td><td>Only if you tick "Email me offers", to send you offers. This is based on your consent.</td><td>Until you unsubscribe or ask us to delete your data. Unsubscribing deletes the address.</td></tr>
       </tbody>
     </table>
@@ -53,18 +56,19 @@
 
   <h2 id="share">4. Who sees your data</h2>
   <ul>
-    <li><strong>Our store staff</strong> see your order and delivery details to pack and dispatch it.</li>
-    <li><strong>The rider delivering your order</strong> sees your name, mobile number, address and, if you shared it, your location, for that order only.</li>
+    <li><strong>The store that packs your order</strong> sees the items, the amount and your pincode. It does not see your name, number or full address.</li>
+    <li><strong>Delivery partners</strong> offered your order see the store, your street and pincode. The partner who accepts it then sees your name, mobile number, full address and, if you shared it, your location, for that order only.</li>
+    <li><strong>Our admin team</strong> can see orders and accounts to run the service, approve partners and help with problems.</li>
     <li><strong>Our hosting provider</strong> ({{biz.hostingProvider}}) stores the data on our behalf and may not use it for anything else.</li>
     <li><strong>Government authorities</strong>, only when a law requires us to share it.</li>
   </ul>
-  <p>While your order is out for delivery, you see the rider's first name and their distance from you. We do not store the rider's location. It is held in memory only while the delivery is in progress.</p>
+  <p>While your order is out for delivery, you see the delivery partner's first name and their distance from you. We do not store the delivery partner's location. It is held in memory only while the delivery is in progress.</p>
 
   <h2 id="third">5. Third-party code on this site</h2>
   <p>This site loads no third-party scripts, software development kits, fonts, maps, analytics or advertising tags. Every file comes from our own server, and our security settings tell your browser to block code from anywhere else. Fonts are the ones already installed on your device.</p>
 
   <h2 id="security">6. How we protect it</h2>
-  <p>All traffic is encrypted with HTTPS. Only signed-in store staff and the assigned rider can see order details, and staff sign-ins expire after {{sessionHours}} hours. Customer sign-ins expire after {{customerSessionDays}} days. We collect as little as possible and delete addresses on a fixed schedule, so there is less to protect. If a breach affects your data, we will tell you and the Data Protection Board of India as the law requires.</p>
+  <p>All traffic is encrypted with HTTPS. Only the store, the delivery partner and the admin team involved can see order details. Partner and admin sign-ins expire after {{sessionHours}} hours. Customer sign-ins expire after {{customerSessionDays}} days. We collect as little as possible and delete addresses on a fixed schedule, so there is less to protect. If a breach affects your data, we will tell you and the Data Protection Board of India as the law requires.</p>
 
   <h2 id="children">7. Children</h2>
   <p>Our service is for adults. You must be 18 or older to place an order, and you confirm this at checkout. We do not knowingly collect personal data from anyone under 18. If you believe a child has given us their details, write to {{biz.privacyEmail}} and we will delete them.</p>

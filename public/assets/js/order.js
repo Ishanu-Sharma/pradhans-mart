@@ -1,21 +1,21 @@
-import { $, api, money, esc, setError, liveValidate, focusFirstError, showAlert, deviceOrders, liveStream, formatTime } from './common.js';
-import { rules, haversineKm } from './validators.js';
+import { $, api, money, esc, showAlert, liveStream, formatTime, productImage } from './common.js';
+import { haversineKm } from './validators.js';
 
 const alertBox = $('#order-alert');
 const view = $('#order-view');
-const lookup = $('#lookup');
 const STEPS = [
   ['placed', 'Order placed'],
   ['accepted', 'Accepted by the store'],
   ['packed', 'Packed'],
+  ['rider_assigned', 'Delivery partner assigned'],
   ['out_for_delivery', 'Out for delivery'],
   ['delivered', 'Delivered']
 ];
-
-let current = null; // { id, token }
-let stream = null;
+const orderId = (new URLSearchParams(window.location.search).get('id') || '').toUpperCase();
+let current = null;
 let myLocation = null; // read on this device only, never sent
 let lastStatus = null;
+const images = new Map();
 
 function renderTimeline(o) {
   const reached = new Map(o.history.map((h) => [h.status, h.at]));
@@ -30,23 +30,36 @@ function renderTimeline(o) {
   }).join('');
 }
 
+function subline(o) {
+  if (o.status === 'cancelled') return o.cancelReason || 'This order was cancelled. You have not been charged.';
+  if (o.status === 'delivered') return 'Thank you for ordering from us.';
+  if (o.waiting) return o.waiting;
+  if (o.status === 'accepted') return `${o.store?.name || 'The store'} is packing your order.`;
+  if (o.status === 'rider_assigned') return `${o.rider?.name || 'Your delivery partner'} is on the way to ${o.store?.name || 'the store'} to collect it.`;
+  if (o.status === 'out_for_delivery') return `${o.rider?.name || 'Your delivery partner'} is on the way to you${o.rider?.vehicle ? ` by ${o.rider.vehicle.toLowerCase()}` : ''}.`;
+  return '';
+}
+
 function riderText(o) {
   if (o.status !== 'out_for_delivery') return null;
-  const name = o.rider?.name || 'Your rider';
   const loc = o.riderLocation;
-  if (!loc) return { text: `${name} is on the way. Their distance appears here once their phone shares its location.`, button: false };
+  const name = o.rider?.name || 'Your delivery partner';
+  if (!loc) return { text: `${name}'s distance appears here once their phone shares its location.`, button: false };
   const from = o.customerLocation || myLocation;
   const updated = new Date(loc.at).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit', second: '2-digit' });
-  if (!from) return { text: `${name} is on the way. Location updated at ${updated}.`, button: true };
+  if (!from) return { text: `Location updated at ${updated}.`, button: true };
   const km = haversineKm(from, loc);
-  const dist = km < 1 ? `${Math.max(50, Math.round(km * 1000 / 50) * 50)} m` : `${km.toFixed(1)} km`;
+  const dist = km < 1 ? `${Math.max(50, Math.round((km * 1000) / 50) * 50)} m` : `${km.toFixed(1)} km`;
   return { text: `${name} is about ${dist} from ${o.customerLocation ? 'your delivery location' : 'you'} in a straight line. Updated at ${updated}.`, button: false };
 }
 
 function render(o) {
-  view.hidden = false; lookup.hidden = true;
+  current = o;
+  view.hidden = false;
+  $('#status-card').dataset.status = o.status;
   $('#order-id').textContent = `Order ${o.id}, placed ${formatTime(o.createdAt)}`;
   if (o.status !== lastStatus) { $('#status-text').textContent = o.statusLabel; lastStatus = o.status; }
+  $('#status-sub').textContent = subline(o);
   $('#timeline').innerHTML = renderTimeline(o);
 
   const r = riderText(o);
@@ -54,22 +67,24 @@ function render(o) {
   if (r) {
     $('#rider-text').textContent = r.text;
     let btn = $('#distance-btn');
-    if (r.button && !btn) {
-      $('#rider-box').insertAdjacentHTML('beforeend', '<button type="button" class="btn btn-secondary btn-small" id="distance-btn">Show the rider\'s distance from me</button><p class="hint small">Your location is used on this device only.</p>');
+    if (r.button && !btn && 'geolocation' in navigator) {
+      $('#rider-box').insertAdjacentHTML('beforeend', '<button type="button" class="btn btn-secondary btn-small" id="distance-btn">Show the distance from me</button><p class="hint small">Your location is used on this device only.</p>');
       btn = $('#distance-btn');
       btn.addEventListener('click', () => {
         btn.disabled = true;
         navigator.geolocation.getCurrentPosition((pos) => {
           myLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
           btn.nextElementSibling?.remove(); btn.remove();
-          render(o);
+          render(current);
         }, () => { btn.disabled = false; $('#rider-text').textContent = 'We could not get your location, so we cannot show the distance.'; });
       });
     } else if (!r.button && btn) { btn.nextElementSibling?.remove(); btn.remove(); }
   }
 
-  $('#cancel-row').hidden = !o.canCancel;
-  $('#order-lines').innerHTML = o.items.map((l) => `<li><span>${l.qty} &times; ${esc(l.name)} <span class="muted small">${esc(l.netQuantity)}</span></span><span>${money(l.price * l.qty)}</span></li>`).join('');
+  const cancelRow = $('#cancel-row');
+  cancelRow.hidden = !o.canCancel;
+  if (o.canCancel && !cancelRow.innerHTML.trim()) cancelRow.innerHTML = '<button type="button" class="btn btn-danger" data-cancel="ask">Cancel this order</button>';
+  $('#order-lines').innerHTML = o.items.map((l) => `<li>${productImage({ image: images.get(l.id), category: 'staples' }, 40)}<span class="grow">${l.qty} &times; ${esc(l.name)} <span class="muted small">${esc(l.netQuantity)}</span></span><span>${money(l.price * l.qty)}</span></li>`).join('');
   $('#order-totals').innerHTML = `
     <div><dt>Items</dt><dd>${money(o.subtotal)}</dd></div>
     <div><dt>Delivery fee</dt><dd>${o.deliveryFee === 0 ? 'Free' : money(o.deliveryFee)}</dd></div>
@@ -81,51 +96,25 @@ function render(o) {
     : '<p class="muted small">The delivery address for this order has been deleted under our retention rule.</p>';
 }
 
-async function load(id, token) {
-  current = { id, token };
-  alertBox.innerHTML = '';
-  try {
-    const o = await api(`/api/orders/${encodeURIComponent(id)}?t=${encodeURIComponent(token)}`);
-    deviceOrders.add(id, token);
-    render(o);
-    stream?.close();
-    stream = liveStream(`/api/orders/${encodeURIComponent(id)}/stream?t=${encodeURIComponent(token)}`, { order: render }, $('#live-state'));
-  } catch (err) {
-    if (err.status === 404) deviceOrders.remove(id);
-    showAlert(alertBox, 'error', 'We could not open that order.', err.message);
-    showLookup();
-  }
-}
-
-function showLookup() {
-  view.hidden = true; lookup.hidden = false;
-  const saved = deviceOrders.list();
-  $('#device-orders').innerHTML = saved.length
-    ? `<h3>Orders placed on this device</h3><ul>${saved.map((o) => `<li><a href="/order#${esc(o.id)}.${esc(o.token)}">${esc(o.id)}</a>, ${esc(formatTime(o.at))}</li>`).join('')}</ul><p class="or-row">or</p>`
-    : '';
-}
-
 // Cancel uses an inline confirmation rather than a browser dialog.
-const cancelRow = $('#cancel-row');
-const cancelIdle = '<button type="button" class="btn btn-danger" data-cancel="ask">Cancel this order</button>';
-cancelRow.innerHTML = cancelIdle;
-cancelRow.addEventListener('click', async (e) => {
+$('#cancel-row').addEventListener('click', async (e) => {
   const btn = e.target.closest('[data-cancel]');
   if (!btn) return;
+  const row = $('#cancel-row');
   const step = btn.dataset.cancel;
   if (step === 'ask') {
-    cancelRow.innerHTML = `<p>Cancel order ${esc(current.id)}? You will not be charged.</p>
+    row.innerHTML = `<p>Cancel order ${esc(current.id)}? You will not be charged.</p>
       <button type="button" class="btn btn-secondary" data-cancel="keep">Keep my order</button>
       <button type="button" class="btn btn-danger" data-cancel="confirm">Yes, cancel it</button>`;
-    cancelRow.querySelector('[data-cancel="keep"]').focus();
+    row.querySelector('[data-cancel="keep"]').focus();
   } else if (step === 'keep') {
-    cancelRow.innerHTML = cancelIdle;
-    cancelRow.querySelector('[data-cancel]').focus();
+    row.innerHTML = '<button type="button" class="btn btn-danger" data-cancel="ask">Cancel this order</button>';
+    row.querySelector('[data-cancel]').focus();
   } else if (step === 'confirm') {
     btn.disabled = true;
     try {
-      const o = await api(`/api/orders/${current.id}/cancel`, { method: 'POST', body: { token: current.token } });
-      cancelRow.innerHTML = cancelIdle;
+      const o = await api(`/api/orders/${current.id}/cancel`, { method: 'POST', body: {} });
+      row.innerHTML = '';
       render(o);
       showAlert(alertBox, 'success', 'Your order is cancelled.', 'You will not be charged.');
     } catch (err) {
@@ -135,27 +124,18 @@ cancelRow.addEventListener('click', async (e) => {
   }
 });
 
-const lookupForm = $('#lookup-form');
-liveValidate($('#orderId'), (v) => rules.orderId(v));
-liveValidate($('#phone'), (v) => rules.phone(v));
-lookupForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  setError($('#orderId'), rules.orderId($('#orderId').value));
-  setError($('#phone'), rules.phone($('#phone').value));
-  if (!focusFirstError(lookupForm)) return;
-  try {
-    const res = await api('/api/orders/lookup', { method: 'POST', body: { orderId: $('#orderId').value.trim().toUpperCase(), phone: $('#phone').value } });
-    history.replaceState(null, '', `/order#${res.id}.${res.token}`);
-    load(res.id, res.token);
-  } catch (err) {
-    showAlert(alertBox, 'error', 'Order not found.', err.message);
+async function start() {
+  if (!/^PM[A-Z0-9]{8}$/.test(orderId)) {
+    alertBox.innerHTML = '<div class="notice notice-info"><strong>Choose an order to track.</strong><p>Your orders are listed on <a href="/account">your account page</a>.</p></div>';
+    return;
   }
-});
-
-function fromHash() {
-  const m = window.location.hash.match(/^#(PM[A-Z0-9]{8})\.([A-Za-z0-9_-]+)$/);
-  if (m) load(m[1], m[2]);
-  else showLookup();
+  try {
+    const [o, catalogue] = await Promise.all([api(`/api/orders/${orderId}`), api('/api/products').catch(() => ({ products: [] }))]);
+    for (const p of catalogue.products) images.set(p.id, p.image);
+    render(o);
+    liveStream('/api/stream/me', { order: (u) => { if (u.id === orderId) render(u); } }, $('#live-state'));
+  } catch (err) {
+    showAlert(alertBox, 'error', 'We could not open that order.', err.message);
+  }
 }
-window.addEventListener('hashchange', fromHash);
-fromHash();
+start();
