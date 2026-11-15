@@ -9,7 +9,7 @@ import { composeWelcomeEmail } from './mail.js';
 import { rules, normalisePhone, inServiceRadius, isValidCoord } from '../public/assets/js/validators.js';
 import {
   sendJson, readJson, HttpError, randomCode, randomToken, sha256, safeEqual,
-  parseCookies, isOpen, formatTime12, rateLimiter
+  parseCookies, isOpen, formatTime12, rateLimiter, hashPassword, verifyPassword
 } from './util.js';
 import { launchProblems } from '../scripts/launch-lib.js';
 
@@ -116,6 +116,7 @@ export function createApp({ dataDir = path.join(root, 'data'), env = process.env
     const s = token && sessions.get(token);
     if (!s || s.exp < Date.now() || (role && s.role !== role)) return null;
     if (s.role === 'rider' && !db.rider(s.riderId)) return null;
+    if (s.role === 'customer' && !db.customer(s.customerId)) return null;
     return { ...s, token };
   }
   function requireRole(req, role) {
@@ -123,10 +124,36 @@ export function createApp({ dataDir = path.join(root, 'data'), env = process.env
     if (!s) throw new HttpError(401, 'Please sign in.');
     return s;
   }
-  function startSession(res, data) {
+  function startSession(res, data, hours = store.retention.staffSessionHours) {
     const token = randomToken(32);
-    sessions.set(token, { ...data, exp: Date.now() + store.retention.staffSessionHours * 3_600_000 });
-    res.setHeader('Set-Cookie', `pm_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${store.retention.staffSessionHours * 3600}${production ? '; Secure' : ''}`);
+    sessions.set(token, { ...data, exp: Date.now() + hours * 3_600_000 });
+    res.setHeader('Set-Cookie', `pm_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.round(hours * 3600)}${production ? '; Secure' : ''}`);
+  }
+  const customerHours = store.retention.customerSessionDays * 24;
+  const DUMMY_HASH = hashPassword(randomToken(12)); // keeps sign-in timing the same for unknown numbers
+  function endSessionsWhere(pred) { for (const [t, s] of sessions) if (pred(s)) sessions.delete(t); }
+
+  function accountView(c) {
+    return {
+      name: c.name, phone: c.phone, address: c.address, createdAt: c.createdAt,
+      orders: db.data.orders.filter((o) => o.customerId === c.id)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map((o) => ({ id: o.id, status: o.status, statusLabel: STATUS_LABEL[o.status], total: o.total, createdAt: o.createdAt, itemCount: o.items.reduce((n, i) => n + i.qty, 0) }))
+    };
+  }
+  function validateAddress(b) {
+    const fields = {};
+    for (const f of ['house', 'street', 'landmark']) { const e = rules[f](b[f]); if (e) fields[f] = e; }
+    const pe = rules.pincode(b.pincode, store.serviceArea.pincodes); if (pe) fields.pincode = pe;
+    if (Object.keys(fields).length) throw new HttpError(422, 'Check the highlighted details.', { fields });
+    return { house: String(b.house).trim(), street: String(b.street).trim(), landmark: String(b.landmark || '').trim(), pincode: String(b.pincode).trim() };
+  }
+  function anonymiseOrders(orders) {
+    const at = new Date().toISOString();
+    for (const o of orders) {
+      o.customer = { name: null, phone: null, house: null, street: null, landmark: null, pincode: null };
+      o.location = null; o.tokenHashes = []; o.customerId = null; o.anonymized = true; o.anonymizedAt = at;
+    }
   }
   function endSession(req, res) {
     const token = parseCookies(req.headers.cookie).pm_session;
@@ -312,6 +339,14 @@ export function createApp({ dataDir = path.join(root, 'data'), env = process.env
       location, riderId: null, tokenHashes: [],
       consents: { termsAcceptedAt: now, ageConfirmedAt: now, policyVersion: business.policyEffectiveDate || 'draft' }
     };
+    const viewer = session(req, 'customer');
+    if (viewer) {
+      o.customerId = viewer.customerId;
+      if (b.saveAddress === true) {
+        const acct = db.customer(viewer.customerId);
+        acct.address = { house: o.customer.house, street: o.customer.street, landmark: o.customer.landmark, pincode: o.customer.pincode };
+      }
+    }
     const token = issueToken(o);
     db.data.orders.push(o);
 
@@ -345,6 +380,7 @@ export function createApp({ dataDir = path.join(root, 'data'), env = process.env
     const phoneHash = sha256(phone);
     const orders = db.data.orders.filter((o) => !o.anonymized && o.customer.phone === phone);
     const subs = db.data.subscribers.filter((s) => s.phoneHash === phoneHash);
+    const accounts = db.data.customers.filter((c) => c.phone === phone);
     const log = { id: randomCode(10), type: b.type, at: new Date().toISOString(), phoneHash, orders: orders.length };
 
     if (b.type === 'export') {
@@ -360,7 +396,8 @@ export function createApp({ dataDir = path.join(root, 'data'), env = process.env
           },
           deliveryLocation: o.location || null, consents: o.consents
         })),
-        marketingEmails: subs.map((s) => ({ email: s.email, consentAt: s.consentAt, consentText: s.consentText }))
+        marketingEmails: subs.map((s) => ({ email: s.email, consentAt: s.consentAt, consentText: s.consentText })),
+        account: accounts.map((c) => ({ name: c.name, phone: c.phone, createdAt: c.createdAt, savedAddress: c.address, password: 'Stored only as a one-way hash' }))[0] || null
       });
     }
 
@@ -368,16 +405,15 @@ export function createApp({ dataDir = path.join(root, 'data'), env = process.env
       db.data.requests.push({ ...log, result: 'refused: order in progress' }); db.save();
       throw new HttpError(409, 'You have an order in progress. You can delete your data once it is delivered or cancelled.');
     }
-    const at = new Date().toISOString();
-    for (const o of orders) {
-      o.customer = { name: null, phone: null, house: null, street: null, landmark: null, pincode: null };
-      o.location = null; o.tokenHashes = []; o.anonymized = true; o.anonymizedAt = at;
-    }
+    anonymiseOrders(orders);
     db.data.subscribers = db.data.subscribers.filter((s) => s.phoneHash !== phoneHash);
+    const accountIds = new Set(accounts.map((c) => c.id));
+    db.data.customers = db.data.customers.filter((c) => !accountIds.has(c.id));
+    endSessionsWhere((s) => accountIds.has(s.customerId));
     db.data.requests.push({ ...log, result: 'completed' });
     db.save();
     for (const o of orders) push(streams.admin, 'order', adminView(o));
-    sendJson(res, 200, { deletedOrders: orders.length, deletedSubscriptions: subs.length });
+    sendJson(res, 200, { deletedOrders: orders.length, deletedSubscriptions: subs.length, deletedAccount: accounts.length > 0 });
   }
 
   function unsubscribe(token) {
@@ -495,6 +531,69 @@ export function createApp({ dataDir = path.join(root, 'data'), env = process.env
       const b = await readJson(req);
       const removed = unsubscribe(String(b.token || ''));
       return sendJson(res, 200, { removed });
+    }
+
+    // Customer accounts
+    if (m === 'POST' && p === '/api/account/register') {
+      if (!limit.login(clientIp(req))) throw new HttpError(429, 'Too many attempts. Wait 15 minutes and try again.');
+      const b = await readJson(req);
+      const fields = {};
+      for (const k of ['name', 'phone', 'password']) { const e = rules[k](b[k]); if (e) fields[k] = e; }
+      if (b.terms !== true) fields.terms = 'Accept the Terms of service and Privacy policy to create an account.';
+      if (b.age !== true) fields.age = 'You must be 18 or older to create an account.';
+      if (Object.keys(fields).length) throw new HttpError(422, 'Check the highlighted details.', { fields });
+      const phone = normalisePhone(b.phone);
+      if (db.data.customers.some((c) => c.phone === phone)) {
+        throw new HttpError(409, 'An account with this mobile number already exists. Sign in instead.', { fields: { phone: 'An account with this mobile number already exists. Sign in instead.' } });
+      }
+      const now = new Date().toISOString();
+      const c = { id: randomCode(10), name: String(b.name).trim(), phone, passwordHash: hashPassword(b.password), createdAt: now, termsAcceptedAt: now, ageConfirmedAt: now, address: null };
+      db.data.customers.push(c); db.save();
+      startSession(res, { role: 'customer', customerId: c.id }, customerHours);
+      return sendJson(res, 201, accountView(c));
+    }
+    if (m === 'POST' && p === '/api/account/login') {
+      if (!limit.login(clientIp(req))) throw new HttpError(429, 'Too many sign-in attempts. Wait 15 minutes and try again.');
+      const b = await readJson(req);
+      const phone = normalisePhone(b.phone);
+      const c = db.data.customers.find((x) => x.phone === phone);
+      const ok = verifyPassword(String(b.password || ''), c ? c.passwordHash : DUMMY_HASH);
+      if (!c || !ok) throw new HttpError(401, 'That mobile number and password do not match an account.');
+      startSession(res, { role: 'customer', customerId: c.id }, customerHours);
+      return sendJson(res, 200, accountView(c));
+    }
+    if (m === 'POST' && p === '/api/account/logout') { endSession(req, res); return sendJson(res, 200, { ok: true }); }
+    if (p.startsWith('/api/account/')) {
+      const s = requireRole(req, 'customer');
+      const c = db.customer(s.customerId);
+      if (m === 'GET' && p === '/api/account/me') return sendJson(res, 200, accountView(c));
+      if (m === 'POST' && p === '/api/account/address') {
+        const b = await readJson(req);
+        c.address = b.remove === true ? null : validateAddress(b);
+        db.save();
+        return sendJson(res, 200, accountView(c));
+      }
+      if ((match = p.match(/^\/api\/account\/orders\/([A-Z0-9]{10})\/track$/)) && m === 'POST') {
+        const o = db.order(match[1]);
+        if (!o || o.customerId !== c.id) throw new HttpError(404, 'Order not found in your account.');
+        const token = issueToken(o); db.save();
+        return sendJson(res, 200, { id: o.id, token });
+      }
+      if (m === 'POST' && p === '/api/account/delete') {
+        const b = await readJson(req);
+        if (!verifyPassword(String(b.password || ''), c.passwordHash)) throw new HttpError(422, 'Check the highlighted details.', { fields: { 'del-password': 'That password is not correct.' } });
+        const mine = db.data.orders.filter((o) => o.customerId === c.id);
+        if (mine.some((o) => ACTIVE.includes(o.status))) throw new HttpError(409, 'You have an order in progress. You can delete your account once it is delivered or cancelled.');
+        anonymiseOrders(mine);
+        db.data.subscribers = db.data.subscribers.filter((x) => x.phoneHash !== sha256(c.phone));
+        db.data.customers = db.data.customers.filter((x) => x.id !== c.id);
+        db.data.requests.push({ id: randomCode(10), type: 'delete account', at: new Date().toISOString(), phoneHash: sha256(c.phone), orders: mine.length, result: 'completed' });
+        db.save();
+        endSessionsWhere((x) => x.customerId === c.id);
+        endSession(req, res);
+        return sendJson(res, 200, { deletedOrders: mine.length });
+      }
+      throw new HttpError(404, 'Not found.');
     }
 
     // Admin
@@ -676,7 +775,7 @@ export function createApp({ dataDir = path.join(root, 'data'), env = process.env
       if (demo && url.pathname === '/robots.txt') { res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('User-agent: *\nDisallow: /\n'); }
       if (url.pathname === '/healthz') { res.writeHead(200, { 'Content-Type': 'text/plain' }); return res.end('ok'); }
       const pathname = url.pathname.length > 1 ? url.pathname.replace(/\/+$/, '') : '/';
-      const html = renderer.render(pathname);
+      const html = renderer.render(pathname, { customer: !!session(req, 'customer') });
       if (html) {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
         return res.end(req.method === 'HEAD' ? undefined : html);
@@ -696,7 +795,7 @@ export function createApp({ dataDir = path.join(root, 'data'), env = process.env
   return { server, db, close: () => new Promise((r) => { for (const set of [streams.stock, streams.admin, ...streams.orders.values(), ...streams.riders.values()]) for (const s of set) s.end(); server.close(r); }) };
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   let app;
   try { app = createApp(); } catch (err) {
     console.error(err.message);

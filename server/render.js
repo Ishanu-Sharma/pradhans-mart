@@ -14,6 +14,8 @@ export const pages = {
   '/refunds': { view: 'refunds', title: 'Cancellation and refund policy', description: 'How to cancel an order, refuse an item at the door or ask for a refund.' },
   '/cookies': { view: 'cookies', title: 'Cookie policy', description: 'Every cookie and browser storage item Pradhan’s Mart uses, and how to change your choice.' },
   '/contact': { view: 'contact', title: 'Contact and business details', description: 'Business details, customer support and the grievance officer for Pradhan’s Mart.' },
+  '/login': { view: 'login', title: 'Sign in', description: 'Sign in as a customer, store admin or rider.', script: 'login', noindex: true },
+  '/account': { view: 'account', title: 'Your account', description: 'Your orders, saved address and account settings.', script: 'account', noindex: true },
   '/admin': { view: 'admin', title: 'Store dashboard', description: 'Staff dashboard.', script: 'admin', noindex: true, staff: true },
   '/rider': { view: 'rider', title: 'Rider app', description: 'Rider deliveries.', script: 'rider', noindex: true, staff: true }
 };
@@ -50,6 +52,7 @@ export function createRenderer({ root, business, store, production, getBrands, d
       refundWithinDays: store.refunds.refundWithinDays,
       addressDays: store.retention.addressDaysAfterCompletion,
       sessionHours: store.retention.staffSessionHours,
+      customerSessionDays: store.retention.customerSessionDays,
       pincodeCount: store.serviceArea.pincodes.length,
       pincodeFirst: store.serviceArea.pincodes[0],
       pincodeLast: store.serviceArea.pincodes.at(-1)
@@ -78,11 +81,11 @@ export function createRenderer({ root, business, store, production, getBrands, d
     };
   }
 
-  function layout(page, body, ctx, raw, urlPath) {
+  function layout(page, body, ctx, raw, urlPath, viewer = {}) {
     const brand = escapeHtml(business.brandName);
     const title = page.view === 'home' ? `${brand}: ${escapeHtml(page.title)}` : `${escapeHtml(page.title)} | ${brand}`;
     const canonical = !demo && process.env.PUBLIC_URL ? `<link rel="canonical" href="${escapeHtml(new URL(urlPath, process.env.PUBLIC_URL).href)}">` : '';
-    const header = page.staff ? staffHeader(brand, page) : siteHeader(brand, urlPath);
+    const header = page.staff ? staffHeader(brand, page) : siteHeader(brand, urlPath, viewer);
     const footer = page.staff ? '' : fill(readView('_footer'), ctx, raw);
     const banner = page.staff ? '' : readView('_cookie-banner');
     const script = page.script
@@ -122,7 +125,7 @@ ${banner}
 </html>`;
   }
 
-  function siteHeader(brand, urlPath) {
+  function siteHeader(brand, urlPath, viewer = {}) {
     const link = (href, label) => `<li><a href="${href}"${urlPath === href ? ' aria-current="page"' : ''}>${label}</a></li>`;
     return `<header class="site-header">
   <div class="wrap header-bar">
@@ -134,6 +137,7 @@ ${banner}
       <ul class="nav-list">
         ${link('/shop', 'Shop')}
         ${link('/order', 'Track order')}
+        ${viewer.customer ? link('/account', 'Account') : link('/login', 'Sign in')}
       </ul>
     </nav>
     <a class="cart-link" href="/shop#cart" data-cart-link aria-label="Cart, 0 items">
@@ -157,12 +161,12 @@ ${banner}
   }
 
   return {
-    render(urlPath) {
+    render(urlPath, viewer = {}) {
       const page = pages[urlPath];
       if (!page) return null;
       const ctx = context();
       const raw = rawBlocks();
-      return layout(page, fill(readView(page.view), ctx, raw), ctx, raw, urlPath);
+      return layout(page, fill(readView(page.view), ctx, raw), ctx, raw, urlPath, viewer);
     },
     renderNotFound() {
       const ctx = context();

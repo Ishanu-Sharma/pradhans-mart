@@ -1,0 +1,65 @@
+<div class="wrap">
+  <div class="page-head">
+    <h1>Your account</h1>
+    <p id="acct-sub">Loading your details&hellip;</p>
+  </div>
+</div>
+
+<div class="wrap account-grid">
+  <div id="acct-alert" role="status" aria-live="polite"></div>
+
+  <section class="panel" aria-labelledby="orders-title">
+    <h2 id="orders-title">Your orders</h2>
+    <div id="acct-orders"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="addr-title">
+    <h2 id="addr-title">Saved address</h2>
+    <p class="muted small">Fills in checkout for you. We keep it only while it is saved here.</p>
+    <form id="addr-form" novalidate>
+      <div class="field">
+        <label for="house">House, flat or building</label>
+        <input class="input" id="house" autocomplete="address-line1" required>
+        <p class="error" id="house-error" hidden></p>
+      </div>
+      <div class="field">
+        <label for="street">Street and locality</label>
+        <input class="input" id="street" autocomplete="address-line2" required>
+        <p class="error" id="street-error" hidden></p>
+      </div>
+      <div class="form-row two">
+        <div class="field">
+          <label for="landmark">Landmark <span class="optional">(optional)</span></label>
+          <input class="input" id="landmark">
+          <p class="error" id="landmark-error" hidden></p>
+        </div>
+        <div class="field">
+          <label for="pincode">Pincode</label>
+          <input class="input" id="pincode" inputmode="numeric" maxlength="6" autocomplete="postal-code" required>
+          <p class="error" id="pincode-error" hidden></p>
+        </div>
+      </div>
+      <div class="cta-row">
+        <button class="btn btn-primary" type="submit">Save address</button>
+        <button class="btn btn-secondary" type="button" id="remove-address" hidden>Remove saved address</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel" aria-labelledby="manage-title">
+    <h2 id="manage-title">Sign out or delete your account</h2>
+    <p><button class="btn btn-secondary" type="button" id="signout">Sign out</button></p>
+    <details class="danger-zone">
+      <summary>Delete my account</summary>
+      <form id="delete-form" novalidate>
+        <p>This deletes your name, mobile number, password and saved address. Your past orders stay in our tax records without your details. This cannot be undone.</p>
+        <div class="field">
+          <label for="del-password">Enter your password to confirm</label>
+          <input class="input" id="del-password" type="password" autocomplete="current-password" required>
+          <p class="error" id="del-password-error" hidden></p>
+        </div>
+        <button class="btn btn-danger" type="submit">Delete my account</button>
+      </form>
+    </details>
+  </section>
+</div>

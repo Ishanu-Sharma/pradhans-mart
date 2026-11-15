@@ -1,0 +1,73 @@
+<div class="wrap">
+  <div class="page-head">
+    <h1>Sign in</h1>
+    <p>Choose how you use Pradhan&rsquo;s Mart. Customers can also order without an account.</p>
+  </div>
+</div>
+
+<div class="wrap login-grid">
+  <section class="panel" aria-labelledby="customer-title">
+    <h2 id="customer-title">Customer</h2>
+    <div id="login-alert" role="alert"></div>
+
+    <form id="signin-form" novalidate aria-label="Customer sign in">
+      <div class="field">
+        <label for="si-phone">Mobile number</label>
+        <input class="input" id="si-phone" type="tel" inputmode="tel" autocomplete="username" required>
+        <p class="error" id="si-phone-error" hidden></p>
+      </div>
+      <div class="field">
+        <label for="si-password">Password</label>
+        <input class="input" id="si-password" type="password" autocomplete="current-password" required>
+        <p class="error" id="si-password-error" hidden></p>
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">Sign in</button>
+      <p class="muted small switch-row">New to Pradhan&rsquo;s Mart? <button type="button" class="link-button" data-show="register">Create an account</button></p>
+    </form>
+
+    <form id="register-form" novalidate aria-label="Create a customer account" hidden>
+      <div class="field">
+        <label for="rg-name">Full name</label>
+        <input class="input" id="rg-name" autocomplete="name" required>
+        <p class="error" id="rg-name-error" hidden></p>
+      </div>
+      <div class="field">
+        <label for="rg-phone">Mobile number</label>
+        <span class="hint" id="rg-phone-hint">You sign in with this number.</span>
+        <input class="input" id="rg-phone" type="tel" inputmode="tel" autocomplete="username" aria-describedby="rg-phone-hint" required>
+        <p class="error" id="rg-phone-error" hidden></p>
+      </div>
+      <div class="field">
+        <label for="rg-password">Password</label>
+        <span class="hint" id="rg-password-hint">At least 8 characters.</span>
+        <input class="input" id="rg-password" type="password" autocomplete="new-password" aria-describedby="rg-password-hint" required>
+        <p class="error" id="rg-password-error" hidden></p>
+      </div>
+      <div class="check">
+        <input type="checkbox" id="rg-terms" required>
+        <label for="rg-terms">I accept the <a href="/terms" target="_blank" rel="noopener">Terms of service</a> and have read the <a href="/privacy" target="_blank" rel="noopener">Privacy policy</a>.</label>
+      </div>
+      <p class="error" id="rg-terms-error" hidden></p>
+      <div class="check">
+        <input type="checkbox" id="rg-age" required>
+        <label for="rg-age">I am 18 years old or older.</label>
+      </div>
+      <p class="error" id="rg-age-error" hidden></p>
+      <button class="btn btn-primary btn-block" type="submit">Create account</button>
+      <p class="muted small switch-row">Already have an account? <button type="button" class="link-button" data-show="signin">Sign in</button></p>
+    </form>
+  </section>
+
+  <div class="role-cards">
+    <section class="panel" aria-labelledby="admin-title">
+      <h2 id="admin-title">Store admin</h2>
+      <p class="muted">Accept and pack orders, assign riders, and update prices and stock.</p>
+      <a class="btn btn-secondary btn-block" href="/admin">Open the store dashboard</a>
+    </section>
+    <section class="panel" aria-labelledby="rider-title">
+      <h2 id="rider-title">Rider</h2>
+      <p class="muted">See your deliveries and share your location while you deliver. Sign in with the code the store gave you.</p>
+      <a class="btn btn-secondary btn-block" href="/rider">Open the rider app</a>
+    </section>
+  </div>
+</div>

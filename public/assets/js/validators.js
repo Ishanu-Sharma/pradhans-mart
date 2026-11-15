@@ -53,6 +53,13 @@ export const rules = {
     if (s.length > 120 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s)) return 'Enter an email address like name@domain.in.';
     return '';
   },
+  password(v) {
+    const s = String(v ?? '');
+    if (!s) return 'Enter a password.';
+    if (s.length < 8) return 'Use at least 8 characters.';
+    if (s.length > 100) return 'Keep it under 100 characters.';
+    return '';
+  },
   orderId(v) {
     const s = text(v).toUpperCase();
     if (!s) return 'Enter your order ID.';

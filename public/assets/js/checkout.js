@@ -107,7 +107,8 @@ async function placeOrder() {
         location: sharedLocation,
         payment: $('input[name="payment"]:checked').value,
         consents: { terms: $('#terms').checked, age: $('#age').checked, marketing: $('#marketing').checked, email: $('#marketing').checked ? $('#email').value.trim() : undefined },
-        expectedTotal: totals.total
+        expectedTotal: totals.total,
+        saveAddress: $('#save-address').checked
       }
     });
     deviceOrders.add(res.id, res.token);
@@ -180,6 +181,19 @@ async function start() {
 
   const saved = preferencesAllowed() ? storage.get('pm_area', null) : null;
   if (saved?.pincode) $('#pincode').value = saved.pincode;
+
+  // Signed-in customers get their details filled in; guests can still check out.
+  let me = null;
+  try { me = await api('/api/account/me'); } catch { me = null; }
+  if (me) {
+    const fill = { name: me.name, phone: me.phone, ...(me.address || {}) };
+    for (const [k, v] of Object.entries(fill)) { const el = $(`#${k}`); if (el && v && !el.value) el.value = v; }
+    if (me.address) for (const k of ['house', 'street', 'landmark', 'pincode']) $(`#${k}`).value = me.address[k] || '';
+    $('#account-note').textContent = `Signed in as ${me.name}. This order will appear in your account.`;
+    $('#save-address-row').hidden = false;
+  } else {
+    $('#account-note').innerHTML = 'Have an account? <a href="/login?next=/checkout">Sign in</a> to fill in your details, or continue as a guest.';
+  }
   for (const f of fields1) liveValidate($(`#${f}`), (v) => check(f, v));
 
   $('#payment-options').innerHTML = config.paymentMethods.map((m) =>

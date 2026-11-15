@@ -18,7 +18,7 @@
     { "id": "upi_on_delivery", "label": "UPI on delivery" }
   ],
   "refunds": { "reportWithinHours": 48, "refundWithinDays": 7 },
-  "retention": { "addressDaysAfterCompletion": 30, "staffSessionHours": 12 },
+  "retention": { "addressDaysAfterCompletion": 30, "staffSessionHours": 12, "customerSessionDays": 30 },
   "launch": {
     "catalogVerified": false,
     "feesConfirmed": false,

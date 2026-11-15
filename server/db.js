@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { seedProducts } from './seed.js';
 
-const empty = () => ({ products: [], orders: [], riders: [], subscribers: [], requests: [], outbox: [] });
+const empty = () => ({ products: [], orders: [], riders: [], customers: [], subscribers: [], requests: [], outbox: [] });
 
 // A small JSON-file store. The app runs as one process, every change is synchronous
 // and is written to disk atomically (write a temp file, then rename over the old one).
@@ -29,6 +29,7 @@ export function createDb(dataDir) {
     save,
     product: (id) => data.products.find((x) => x.id === id),
     order: (id) => data.orders.find((x) => x.id === id),
-    rider: (id) => data.riders.find((x) => x.id === id)
+    rider: (id) => data.riders.find((x) => x.id === id),
+    customer: (id) => data.customers.find((x) => x.id === id)
   };
 }

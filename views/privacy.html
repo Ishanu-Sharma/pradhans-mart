@@ -35,6 +35,7 @@
         <tr><td>Your location at checkout (optional)</td><td>Only if you tick the box, to help the rider find you.</td><td>Deleted with the address, {{addressDays}} days after delivery or cancellation.</td></tr>
         <tr><td>Order contents, amounts, payment method (cash or UPI), dates</td><td>To fulfil the order, handle refunds and keep the tax records GST law requires.</td><td>For as long as GST law requires, currently 72 months from the due date of the annual return for that year. After you ask us to delete your data, these records are kept without your name, number or address.</td></tr>
         <tr><td>Your confirmation that you accept our terms and are 18 or older, with the date</td><td>To show that you agreed when you placed the order.</td><td>With the order record.</td></tr>
+        <tr><td>Account (optional): name, mobile number, password, saved address</td><td>Only if you create an account, so you can sign in, see your orders and fill in checkout faster. Your password is stored only as a one-way scrambled hash, so nobody at the store can read it. The address is saved only when you choose to save it.</td><td>Until you delete your account from the account page, or ask us to delete your data.</td></tr>
         <tr><td>Email address (optional)</td><td>Only if you tick "Email me offers", to send you offers. This is based on your consent.</td><td>Until you unsubscribe or ask us to delete your data. Unsubscribing deletes the address.</td></tr>
       </tbody>
     </table>
@@ -63,7 +64,7 @@
   <p>This site loads no third-party scripts, software development kits, fonts, maps, analytics or advertising tags. Every file comes from our own server, and our security settings tell your browser to block code from anywhere else. Fonts are the ones already installed on your device.</p>
 
   <h2 id="security">6. How we protect it</h2>
-  <p>All traffic is encrypted with HTTPS. Only signed-in store staff and the assigned rider can see order details, and staff sign-ins expire after {{sessionHours}} hours. We collect as little as possible and delete addresses on a fixed schedule, so there is less to protect. If a breach affects your data, we will tell you and the Data Protection Board of India as the law requires.</p>
+  <p>All traffic is encrypted with HTTPS. Only signed-in store staff and the assigned rider can see order details, and staff sign-ins expire after {{sessionHours}} hours. Customer sign-ins expire after {{customerSessionDays}} days. We collect as little as possible and delete addresses on a fixed schedule, so there is less to protect. If a breach affects your data, we will tell you and the Data Protection Board of India as the law requires.</p>
 
   <h2 id="children">7. Children</h2>
   <p>Our service is for adults. You must be 18 or older to place an order, and you confirm this at checkout. We do not knowingly collect personal data from anyone under 18. If you believe a child has given us their details, write to {{biz.privacyEmail}} and we will delete them.</p>
@@ -78,7 +79,7 @@
     <li>nominate someone to use these rights for you if you die or become unable to;</li>
     <li>have your complaints heard.</li>
   </ul>
-  <p>To download or delete your data yourself, use the <a href="/data-request">your data page</a>. It takes effect immediately. To stop offer emails, use the unsubscribe link in any email. For correction, nomination or anything else, write to {{biz.privacyEmail}}.</p>
+  <p>To download or delete your data yourself, use the <a href="/data-request">your data page</a>, or delete your account from your <a href="/account">account page</a>. Both take effect immediately. To stop offer emails, use the unsubscribe link in any email. For correction, nomination or anything else, write to {{biz.privacyEmail}}.</p>
 
   <h2 id="grievance">9. Complaints</h2>
   <p>Our grievance officer is {{biz.grievanceOfficer.name}}, {{biz.grievanceOfficer.designation}}. Email {{biz.grievanceOfficer.email}} or call {{biz.grievanceOfficer.phone}}. We acknowledge every complaint within 48 hours and resolve it within one month. If you are not satisfied with our answer, you can complain to the Data Protection Board of India.</p>

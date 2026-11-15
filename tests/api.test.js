@@ -287,3 +287,63 @@ test('demo mode: banner, honest business details, open all day, hidden from sear
 test('production without demo mode refuses to start until launch checks pass', () => {
   assert.throws(() => createApp({ dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'pmart-prod-')), env: { NODE_ENV: 'production' } }), /Launch checks failed/);
 });
+
+test('customer accounts: register, sign in, linked orders, saved address, track, delete', async () => {
+  const phone = '7896000001';
+  const reg = (body) => call('/api/account/register', { method: 'POST', body });
+  let r = await reg({ name: 'Rina Bora', phone, password: 'short', terms: true, age: true });
+  assert.equal(r.status, 422); assert.ok(r.json.fields.password);
+  r = await reg({ name: 'Rina Bora', phone, password: 'good-password-1' });
+  assert.equal(r.status, 422); assert.ok(r.json.fields.terms && r.json.fields.age);
+  r = await reg({ name: 'Rina Bora', phone, password: 'good-password-1', terms: true, age: true });
+  assert.equal(r.status, 201);
+  const cookie = r.headers.get('set-cookie').split(';')[0];
+  assert.match(r.headers.get('set-cookie'), /HttpOnly; SameSite=Strict; Max-Age=2592000/);
+  assert.equal((await reg({ name: 'X Y', phone: '+91 ' + phone, password: 'another-pass', terms: true, age: true })).status, 409);
+  const stored = app.db.data.customers.find((c) => c.phone === phone);
+  assert.ok(!JSON.stringify(stored).includes('good-password-1'), 'password is hashed');
+
+  assert.equal((await call('/api/account/login', { method: 'POST', body: { phone, password: 'wrong-password' } })).status, 401);
+  assert.equal((await call('/api/account/login', { method: 'POST', body: { phone: '9000000000', password: 'whatever1' } })).status, 401);
+  const li = await call('/api/account/login', { method: 'POST', body: { phone, password: 'good-password-1' } });
+  assert.equal(li.status, 200);
+  assert.equal((await call('/api/account/me')).status, 401, 'needs a session');
+
+  // Header switches to "Account" when signed in.
+  assert.match((await call('/', { cookie })).text, /href="\/account"/);
+  assert.match((await call('/')).text, /href="\/login"/);
+
+  // Order while signed in is linked, and the address is saved only when asked.
+  const o = await call('/api/orders', { method: 'POST', cookie, body: orderBody({ customer: { ...customer, phone }, saveAddress: true }) });
+  assert.equal(o.status, 201);
+  const me = await call('/api/account/me', { cookie });
+  assert.equal(me.json.orders.length, 1);
+  assert.equal(me.json.orders[0].id, o.json.id);
+  assert.equal(me.json.address.pincode, '781005');
+  const tr = await call(`/api/account/orders/${o.json.id}/track`, { method: 'POST', cookie, body: {} });
+  assert.equal((await call(`/api/orders/${o.json.id}?t=${tr.json.token}`)).status, 200);
+
+  // A guest order with the same number is NOT linked (no proof of ownership).
+  const g = await call('/api/orders', { method: 'POST', body: orderBody({ customer: { ...customer, phone } }) });
+  assert.equal((await call('/api/account/me', { cookie })).json.orders.length, 1);
+
+  assert.equal((await call('/api/account/address', { method: 'POST', cookie, body: { house: 'A', street: 'Zoo Road', pincode: '110001' } })).status, 422);
+  assert.equal((await call('/api/account/address', { method: 'POST', cookie, body: { remove: true } })).json.address, null);
+
+  // Delete is refused while an order is active, needs the password, then removes everything.
+  assert.equal((await call('/api/account/delete', { method: 'POST', cookie, body: { password: 'good-password-1' } })).status, 409);
+  await call(`/api/orders/${o.json.id}/cancel`, { method: 'POST', body: { token: o.json.token } });
+  await call(`/api/orders/${g.json.id}/cancel`, { method: 'POST', body: { token: g.json.token } });
+  assert.equal((await call('/api/account/delete', { method: 'POST', cookie, body: { password: 'nope-nope' } })).status, 422);
+  const del = await call('/api/account/delete', { method: 'POST', cookie, body: { password: 'good-password-1' } });
+  assert.equal(del.status, 200);
+  assert.ok(!app.db.data.customers.some((c) => c.phone === phone));
+  assert.equal(app.db.order(o.json.id).customer.name, null);
+  assert.equal((await call('/api/account/me', { cookie })).status, 401, 'session ended');
+});
+
+test('sign-in page offers all three roles', async () => {
+  const r = await call('/login');
+  assert.equal(r.status, 200);
+  for (const s of ['signin-form', 'register-form', 'href="/admin"', 'href="/rider"']) assert.ok(r.text.includes(s), s);
+});

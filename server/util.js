@@ -48,6 +48,19 @@ export function safeEqual(a, b) {
   return crypto.timingSafeEqual(x, y);
 }
 
+// Passwords are stored only as a salted scrypt hash.
+export function hashPassword(password) {
+  const salt = crypto.randomBytes(16);
+  return `${salt.toString('hex')}:${crypto.scryptSync(String(password), salt, 32).toString('hex')}`;
+}
+export function verifyPassword(password, stored) {
+  const [salt, hash] = String(stored || '').split(':');
+  if (!salt || !hash) return false;
+  const calc = crypto.scryptSync(String(password), Buffer.from(salt, 'hex'), 32);
+  const expected = Buffer.from(hash, 'hex');
+  return expected.length === calc.length && crypto.timingSafeEqual(calc, expected);
+}
+
 export function parseCookies(header = '') {
   const out = {};
   for (const part of header.split(';')) {

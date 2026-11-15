@@ -17,6 +17,7 @@
     <form id="step-1" class="panel" novalidate aria-labelledby="s1-title">
       <h2 id="s1-title" tabindex="-1">Where should we deliver?</h2>
       <p class="muted small">We use these details only to deliver this order. See the <a href="/privacy">privacy policy</a>.</p>
+      <p class="small" id="account-note"></p>
       <div class="form-row two">
         <div class="field">
           <label for="name">Full name</label>
@@ -61,6 +62,10 @@
       </div>
       <p class="error" id="share-location-error" hidden></p>
       <p class="small" id="location-status" role="status" aria-live="polite"></p>
+      <div class="check" id="save-address-row" hidden>
+        <input type="checkbox" id="save-address">
+        <label for="save-address">Save this address to my account <span class="optional">(optional)</span></label>
+      </div>
       <div class="step-actions">
         <a class="btn btn-secondary" href="/shop">Back to shop</a>
         <button class="btn btn-primary" type="submit">Continue to review</button>

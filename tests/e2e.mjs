@@ -133,6 +133,39 @@ try {
   await riderPost(`/api/rider/orders/${orderId}/delivered`, {});
   check('delivered status arrives live', await waitFor(`document.getElementById('status-text').textContent==='Delivered' && document.getElementById('rider-box').hidden`));
 
+  // Customer account: sign-in page, register, header, checkout prefill, account page.
+  await go('/');
+  check('header has a Sign in link', await evaluate(`return !!document.querySelector('.nav-list a[href="/login"]');`));
+  await go('/login');
+  check('sign-in page offers customer, admin and rider', await evaluate(`return !!document.getElementById('signin-form') && !!document.querySelector('a[href="/admin"]') && !!document.querySelector('a[href="/rider"]');`));
+  await evaluate(`document.querySelector('[data-show="register"]').click();`);
+  check('create-account form opens and takes focus', await evaluate(`return !document.getElementById('register-form').hidden && document.activeElement.id==='rg-name';`));
+  await evaluate(`document.getElementById('register-form').requestSubmit();`);
+  check('empty sign-up shows five inline errors', await evaluate(`return document.querySelectorAll('#register-form [aria-invalid="true"]').length===5;`));
+  await evaluate(`const s=(id,v)=>{const e=document.getElementById(id); e.value=v; e.dispatchEvent(new Event('input'));};
+    s('rg-name','Rina Bora'); s('rg-phone','7896000002'); s('rg-password','good-password-1');
+    document.getElementById('rg-terms').click(); document.getElementById('rg-age').click();
+    document.getElementById('register-form').requestSubmit();`);
+  check('sign-up lands on the account page', await waitFor(`location.pathname==='/account' && document.getElementById('acct-sub').textContent.includes('Rina Bora')`));
+  check('header now shows Account', await evaluate(`return !!document.querySelector('.nav-list a[href="/account"]');`));
+  await evaluate(`const s=(id,v)=>{document.getElementById(id).value=v;}; s('house','House 12'); s('street','Zoo Road, Tarun Nagar'); s('pincode','781005'); document.getElementById('addr-form').requestSubmit();`);
+  check('address saves from the account page', await waitFor(`document.getElementById('acct-alert').textContent.includes('Address saved')`));
+  await go('/shop');
+  await waitFor(`document.querySelectorAll('#products .product').length > 20`);
+  await evaluate(`document.querySelector('[data-id="tata-salt-1kg"] [data-action="add"]').click();`);
+  await go('/checkout');
+  check('checkout fills in the signed-in customer', await waitFor(`document.getElementById('name').value==='Rina Bora' && document.getElementById('phone').value==='7896000002' && document.getElementById('street').value==='Zoo Road, Tarun Nagar' && !document.getElementById('save-address-row').hidden`));
+  await go('/account');
+  await waitFor(`document.getElementById('acct-sub').textContent.includes('Rina')`);
+  await evaluate(`document.getElementById('signout').click();`);
+  check('sign out returns home with Sign in link', await waitFor(`location.pathname==='/' && document.querySelector('.nav-list a[href="/login"]')`));
+  await go('/login');
+  await evaluate(`document.getElementById('si-phone').value='7896000002'; document.getElementById('si-password').value='wrong-password'; document.getElementById('signin-form').requestSubmit();`);
+  check('wrong password shows an error', await waitFor(`document.getElementById('login-alert').textContent.includes('do not match')`));
+  await evaluate(`document.getElementById('si-password').value='good-password-1'; document.getElementById('signin-form').requestSubmit();`);
+  check('sign in with the right password works', await waitFor(`location.pathname==='/account'`));
+  await evaluate(`await fetch('/api/account/logout',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}); localStorage.pm_cart='[]';`);
+
   // Staff interfaces render.
   await go('/admin');
   await waitFor(`!document.getElementById('login').hidden`);
